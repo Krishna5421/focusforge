@@ -29,6 +29,8 @@ urlpatterns = [
     path('api/', include('habits.api_urls')),
     path('goals/', include('goals.urls')),
     path('api/', include('goals.api_urls')),
+    path('study/', include('study.urls')),
+    path('api/', include('study.api_urls')),
 ]
 
 if settings.DEBUG:
