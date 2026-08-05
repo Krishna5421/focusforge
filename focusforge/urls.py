@@ -31,6 +31,8 @@ urlpatterns = [
     path('api/', include('goals.api_urls')),
     path('study/', include('study.urls')),
     path('api/', include('study.api_urls')),
+    path('pomodoro/', include('pomodoro.urls')),
+    path('api/', include('pomodoro.api_urls')),
 ]
 
 if settings.DEBUG:
