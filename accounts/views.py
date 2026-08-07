@@ -1,9 +1,8 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.shortcuts import render, redirect
-from .forms import RegisterForm, ProfileForm, UserUpdateForm
+from .forms import RegisterForm, StyledLoginForm, ProfileForm, UserUpdateForm
 
 
 def register_view(request):
@@ -11,15 +10,21 @@ def register_view(request):
         return redirect('core:dashboard')
 
     if request.method == 'POST':
-        form = RegisterForm(request.POST)
-        if form.is_valid():
-            user = form.save()
+        register_form = RegisterForm(request.POST)
+        if register_form.is_valid():
+            user = register_form.save()
             login(request, user)
             messages.success(request, 'Account created successfully. Welcome to FocusForge!')
             return redirect('core:dashboard')
     else:
-        form = RegisterForm()
-    return render(request, 'accounts/register.html', {'form': form})
+        register_form = RegisterForm()
+
+    login_form = StyledLoginForm()
+    return render(request, 'accounts/auth.html', {
+        'login_form': login_form,
+        'register_form': register_form,
+        'initial_view': 'register',
+    })
 
 
 def login_view(request):
@@ -27,18 +32,23 @@ def login_view(request):
         return redirect('core:dashboard')
 
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
+        login_form = StyledLoginForm(request, data=request.POST)
+        if login_form.is_valid():
+            user = login_form.get_user()
             login(request, user)
             messages.success(request, f'Welcome back, {user.username}!')
             return redirect('core:dashboard')
         else:
             messages.error(request, 'Invalid username or password.')
     else:
-        form = AuthenticationForm()
+        login_form = StyledLoginForm()
 
-    return render(request, 'accounts/login.html', {'form': form})
+    register_form = RegisterForm()
+    return render(request, 'accounts/auth.html', {
+        'login_form': login_form,
+        'register_form': register_form,
+        'initial_view': 'login',
+    })
 
 
 @login_required
