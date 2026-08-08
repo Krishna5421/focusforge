@@ -4,6 +4,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from .models import Task
+from achievements.utils import award_xp
 
 
 @receiver(pre_save, sender=Task)
@@ -35,3 +36,5 @@ def send_completion_email(sender, instance, created, **kwargs):
                 recipient_list=[instance.user.email],
                 fail_silently=True,
             )
+
+        award_xp(instance.user, 'TASK_COMPLETED')
