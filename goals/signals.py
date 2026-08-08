@@ -2,6 +2,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from .models import Milestone
+from achievements.utils import award_xp
 
 
 def recalculate_goal_progress(goal):
@@ -25,7 +26,11 @@ def update_goal_on_milestone_save(sender, instance, **kwargs):
     if instance.is_completed and not instance.completed_at:
         instance.completed_at = timezone.now()
         Milestone.objects.filter(pk=instance.pk).update(completed_at=instance.completed_at)
+        award_xp(instance.goal.user, 'MILESTONE_COMPLETED')
     recalculate_goal_progress(instance.goal)
+
+    if instance.goal.status == 'COMPLETED':
+        award_xp(instance.goal.user, 'GOAL_COMPLETED')
 
 
 @receiver(post_delete, sender=Milestone)
