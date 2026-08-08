@@ -2,6 +2,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from datetime import timedelta
 from .models import HabitLog
+from achievements.utils import award_xp
 
 
 def recalculate_streak(habit):
@@ -31,6 +32,8 @@ def recalculate_streak(habit):
 @receiver(post_save, sender=HabitLog)
 def update_streak_on_log(sender, instance, **kwargs):
     recalculate_streak(instance.habit)
+    if instance.completed:
+        award_xp(instance.habit.user, 'HABIT_CHECKIN')
 
 
 @receiver(post_delete, sender=HabitLog)
