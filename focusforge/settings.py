@@ -38,10 +38,16 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+
+    'cloudinary_storage',
     'django.contrib.staticfiles',
+    'cloudinary',
+
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
+    'django_apscheduler',
+
     'accounts',
     'tasks',
     'habits',
@@ -51,7 +57,23 @@ INSTALLED_APPS = [
     'notifications',
     'achievements',
     'core',
+    'assistant',
 ]
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+}
+
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -166,3 +188,13 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
 }
+
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = f'FocusForge <{config("EMAIL_HOST_USER")}>'
