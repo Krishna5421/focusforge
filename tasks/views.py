@@ -55,8 +55,7 @@ def task_delete(request, pk):
     if request.method == 'POST':
         task.delete()
         messages.info(request, 'Task deleted.')
-        return redirect('tasks:task_list')
-    return render(request, 'tasks/task_confirm_delete.html', {'task': task})
+    return redirect('tasks:task_list')
 
 
 @login_required

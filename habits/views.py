@@ -55,5 +55,4 @@ def habit_delete(request, pk):
         habit.is_active = False
         habit.save()
         messages.info(request, 'Habit removed.')
-        return redirect('habits:habit_list')
-    return render(request, 'habits/habit_confirm_delete.html', {'habit': habit})
+    return redirect('habits:habit_list')

@@ -65,5 +65,4 @@ def goal_delete(request, pk):
     if request.method == 'POST':
         goal.delete()
         messages.info(request, 'Goal deleted.')
-        return redirect('goals:goal_list')
-    return render(request, 'goals/goal_confirm_delete.html', {'goal': goal})
+    return redirect('goals:goal_list')
