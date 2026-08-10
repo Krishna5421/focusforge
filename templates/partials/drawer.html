@@ -1,0 +1,34 @@
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer">
+    <div class="drawer-header">
+        <span>More</span>
+        <button class="drawer-close" id="drawerClose" aria-label="Close menu">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    <a href="{% url 'study:study_dashboard' %}" class="drawer-item">
+        <i class="bi bi-book"></i> Study Tracker
+    </a>
+    <a href="{% url 'pomodoro:pomodoro_page' %}" class="drawer-item">
+        <i class="bi bi-stopwatch"></i> Pomodoro
+    </a>
+    <a href="{% url 'core:deadlines' %}" class="drawer-item">
+        <i class="bi bi-calendar-event"></i> Deadlines
+    </a>
+    <a href="{% url 'core:analytics_page' %}" class="drawer-item">
+        <i class="bi bi-bar-chart"></i> Analytics
+    </a>
+    <a href="{% url 'achievements:achievement_list' %}" class="drawer-item">
+        <i class="bi bi-trophy"></i> Achievements
+    </a>
+    <a href="{% url 'assistant:assistant_page' %}" class="drawer-item">
+        <i class="bi bi-stars"></i> AI Assistant
+    </a>
+    <hr class="drawer-divider">
+    <a href="{% url 'accounts:profile' %}" class="drawer-item">
+        <i class="bi bi-person"></i> Profile
+    </a>
+    <a href="{% url 'accounts:settings' %}" class="drawer-item">
+        <i class="bi bi-gear"></i> Settings
+    </a>
+</div>
