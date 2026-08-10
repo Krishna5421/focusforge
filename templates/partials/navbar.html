@@ -1,0 +1,58 @@
+{% load static %}
+<nav class="ff-navbar">
+    <div class="navbar-left">
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu">
+            <i class="bi bi-list"></i>
+        </button>
+        <a href="{% url 'core:dashboard' %}" class="navbar-logo">
+            <span class="logo-icon"><i class="bi bi-bullseye"></i></span>
+            <span class="logo-text">Focus<span class="accent">Forge</span></span>
+        </a>
+    </div>
+
+    <div class="navbar-center">
+        <a href="{% url 'core:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'tasks:task_list' %}" class="nav-link {% if request.resolver_match.app_name == 'tasks' %}active{% endif %}">Tasks</a>
+        <a href="{% url 'habits:habit_list' %}" class="nav-link {% if request.resolver_match.app_name == 'habits' %}active{% endif %}">Habits</a>
+        <a href="{% url 'goals:goal_list' %}" class="nav-link {% if request.resolver_match.app_name == 'goals' %}active{% endif %}">Goals</a>
+    </div>
+
+    <div class="navbar-right">
+        <div class="search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" placeholder="Search focus..." id="globalSearch">
+        </div>
+
+        <a href="{% url 'notifications:notification_list' %}" class="icon-btn" aria-label="Notifications">
+            <i class="bi bi-bell"></i>
+            <span class="icon-dot"></span>
+        </a>
+
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">
+            <i class="bi bi-moon-stars" id="themeIcon"></i>
+        </button>
+
+        <div class="xp-badge">
+            <i class="bi bi-lightning-charge-fill"></i>
+            <span>{{ request.user.profile.total_xp }} XP</span>
+        </div>
+
+        <div class="dropdown avatar-dropdown">
+            <button class="avatar-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if request.user.profile.profile_picture %}
+                    <img src="{{ request.user.profile.profile_picture.url }}" alt="Profile" class="avatar-img">
+                {% else %}
+                    <div class="avatar-initials">
+                        {% if request.user.first_name %}{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}{% else %}{{ request.user.username|first|upper }}{% endif %}
+                    </div>
+                {% endif %}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{% url 'accounts:profile' %}"><i class="bi bi-person"></i> Profile</a></li>
+                <li><a class="dropdown-item" href="{% url 'accounts:settings' %}"><i class="bi bi-gear"></i> Settings</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
