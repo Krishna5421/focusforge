@@ -3,8 +3,8 @@ from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from .models import Task
 from achievements.utils import award_xp
+from .models import Task
 
 
 @receiver(pre_save, sender=Task)
@@ -37,4 +37,7 @@ def send_completion_email(sender, instance, created, **kwargs):
                 fail_silently=True,
             )
 
-        award_xp(instance.user, 'TASK_COMPLETED')
+        # XP is awarded exactly once per task, permanently, regardless of future toggling
+        if not instance.xp_awarded:
+            award_xp(instance.user, 'TASK_COMPLETED')
+            Task.objects.filter(pk=instance.pk).update(xp_awarded=True)
