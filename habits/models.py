@@ -10,7 +10,7 @@ class Habit(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='habits')
     name = models.CharField(max_length=100)
-    icon = models.CharField(max_length=10, blank=True)  
+    icon = models.CharField(max_length=10, blank=True)
     frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='DAILY')
     target_days = models.JSONField(default=list, blank=True)  # e.g. [1,2,3,4,5] for weekdays
 
@@ -38,6 +38,7 @@ class HabitLog(models.Model):
     habit = models.ForeignKey(Habit, on_delete=models.CASCADE, related_name='logs')
     date = models.DateField()
     completed = models.BooleanField(default=True)
+    xp_awarded = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('habit', 'date')
