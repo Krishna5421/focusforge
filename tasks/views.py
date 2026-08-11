@@ -11,10 +11,14 @@ def task_list(request):
 
     status_filter = request.GET.get('status')
     priority_filter = request.GET.get('priority')
+    search_query = request.GET.get('search')
+
     if status_filter:
         tasks = tasks.filter(status=status_filter)
     if priority_filter:
         tasks = tasks.filter(priority=priority_filter)
+    if search_query:
+        tasks = tasks.filter(title__icontains=search_query)
 
     return render(request, 'tasks/task_list.html', {'tasks': tasks})
 
