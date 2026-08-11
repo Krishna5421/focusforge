@@ -61,6 +61,8 @@ class Task(models.Model):
     repeat_frequency = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=True, blank=True)
 
     completed_at = models.DateTimeField(null=True, blank=True)
+    
+    xp_awarded = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
