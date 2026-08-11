@@ -16,13 +16,14 @@ def dashboard(request):
     user = request.user
     today = timezone.now().date()
 
-    todays_tasks = Task.objects.filter(user=user, due_date__date=today)
-    todays_tasks_count = todays_tasks.count()
-    completed_today_count = todays_tasks.filter(status='COMPLETED').count()
+    todays_tasks_qs = Task.objects.filter(user=user, due_date__date=today)
+    todays_tasks_count = todays_tasks_qs.count()
+    completed_today_count = todays_tasks_qs.filter(status='COMPLETED').count()
+    todays_tasks = todays_tasks_qs[:5]  # slice LAST, after all filtering/counting is done
 
-    habits = Habit.objects.filter(user=user, is_active=True)
+    habits_qs = Habit.objects.filter(user=user, is_active=True)
     todays_habits = []
-    for habit in habits:
+    for habit in habits_qs:
         completed_today = habit.logs.filter(date=today, completed=True).exists()
         todays_habits.append({'habit': habit, 'completed_today': completed_today})
 
@@ -35,20 +36,19 @@ def dashboard(request):
     today_focus_minutes = today_focus_seconds // 60
 
     profile = user.profile
-    
     recent_achievements = UserAchievement.objects.filter(user=user)[:4]
 
     context = {
-    'todays_tasks': todays_tasks,
-    'todays_tasks_count': todays_tasks_count,
-    'completed_today_count': completed_today_count,
-    'todays_habits': todays_habits,
-    'active_goals': active_goals,
-    'active_goals_count': active_goals.count(),
-    'today_focus_minutes': today_focus_minutes,
-    'profile': profile,
-    'recent_achievements': recent_achievements,
-}
+        'todays_tasks': todays_tasks,
+        'todays_tasks_count': todays_tasks_count,
+        'completed_today_count': completed_today_count,
+        'todays_habits': todays_habits,
+        'active_goals': active_goals,
+        'active_goals_count': active_goals.count(),
+        'today_focus_minutes': today_focus_minutes,
+        'profile': profile,
+        'recent_achievements': recent_achievements,
+    }
     return render(request, 'core/dashboard.html', context)
 
 
