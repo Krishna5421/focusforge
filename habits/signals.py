@@ -32,8 +32,14 @@ def recalculate_streak(habit):
 @receiver(post_save, sender=HabitLog)
 def update_streak_on_log(sender, instance, **kwargs):
     recalculate_streak(instance.habit)
-    if instance.completed:
+
+    already_awarded_today = HabitLog.objects.filter(
+        habit=instance.habit, date=instance.date, xp_awarded=True
+    ).exclude(pk=instance.pk).exists()
+
+    if instance.completed and not already_awarded_today and not instance.xp_awarded:
         award_xp(instance.habit.user, 'HABIT_CHECKIN')
+        HabitLog.objects.filter(pk=instance.pk).update(xp_awarded=True)
 
 
 @receiver(post_delete, sender=HabitLog)
