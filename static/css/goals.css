@@ -1,0 +1,55 @@
+/* Goals list + detail pages */
+
+.goal-page-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.goal-card { padding: 20px; display: block; }
+
+.goal-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+.goal-card-top h3 { font-size: 1rem; font-weight: 650; color: var(--text); }
+
+.goal-deadline {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 10px;
+}
+
+.milestone-add-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    align-items: center;
+}
+.milestone-add-form input[type="text"] {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+}
+.milestone-add-form input[type="number"] {
+    width: 70px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 9px 8px;
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+}
+
+@media (max-width: 900px) {
+    .goal-page-grid { grid-template-columns: 1fr; }
+    .milestone-add-form { flex-direction: column; align-items: stretch; }
+}
