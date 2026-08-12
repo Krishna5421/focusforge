@@ -8,4 +8,5 @@ urlpatterns = [
     path('analytics/focus-trend/', api_views.FocusTimeTrendAPIView.as_view(), name='api_focus_trend'),
     path('analytics/goal-progress/', api_views.GoalProgressAPIView.as_view(), name='api_goal_progress'),
     path('dashboard-summary/', api_views.DashboardSummaryAPIView.as_view(), name='api_dashboard_summary'),
+    path('dashboard-stats/', api_views.DashboardStatsAPIView.as_view(), name='api_dashboard_stats'),
 ]

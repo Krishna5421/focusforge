@@ -9,6 +9,7 @@ from habits.models import Habit
 from study.models import Subject
 from pomodoro.models import PomodoroSession
 from goals.models import Goal
+from django.utils import timezone
 
 
 class TaskCompletionTrendAPIView(APIView):
@@ -112,4 +113,38 @@ class DashboardSummaryAPIView(APIView):
             'current_streak': profile.current_streak,
             'longest_streak': profile.longest_streak,
             'productivity_score': profile.productivity_score,
+        })
+        
+class DashboardStatsAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        today = timezone.now().date()
+
+        todays_tasks_qs = Task.objects.filter(user=user, due_date__date=today)
+        todays_tasks_count = todays_tasks_qs.count()
+        completed_today_count = todays_tasks_qs.filter(status='COMPLETED').count()
+
+        today_focus_seconds = 0
+        todays_pomodoros = PomodoroSession.objects.filter(user=user, started_at__date=today, status='COMPLETED')
+        for session in todays_pomodoros:
+            today_focus_seconds += session.actual_focus_seconds
+        today_focus_minutes = today_focus_seconds // 60
+
+        active_goals_count = Goal.objects.filter(user=user, status='ACTIVE').count()
+        profile = user.profile
+
+        task_pct = 0
+        if todays_tasks_count > 0:
+            task_pct = round((completed_today_count / todays_tasks_count) * 100)
+
+        return Response({
+            'todays_tasks_count': todays_tasks_count,
+            'completed_today_count': completed_today_count,
+            'task_pct': task_pct,
+            'current_streak': profile.current_streak,
+            'today_focus_minutes': today_focus_minutes,
+            'pomodoro_sessions_today': todays_pomodoros.count(),
+            'active_goals_count': active_goals_count,
         })
