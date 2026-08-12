@@ -18,10 +18,10 @@
     </div>
 
     <div class="navbar-right">
-        <div class="search-wrap">
-            <i class="bi bi-search"></i>
-            <input type="text" placeholder="Search focus..." id="globalSearch">
-        </div>
+        <form class="search-wrap" action="{% url 'tasks:task_list' %}" method="get">
+    <i class="bi bi-search"></i>
+    <input type="text" name="search" placeholder="Search focus..." id="globalSearch">
+</form>
 
         <a href="{% url 'notifications:notification_list' %}" class="icon-btn" aria-label="Notifications">
             <i class="bi bi-bell"></i>
@@ -33,9 +33,9 @@
         </button>
 
         <div class="xp-badge">
-            <i class="bi bi-lightning-charge-fill"></i>
-            <span>{{ request.user.profile.total_xp }} XP</span>
-        </div>
+    <i class="bi bi-lightning-charge-fill"></i>
+    <span>{{ request.user.profile.total_xp }} XP</span>
+</div>
 
         <div class="dropdown avatar-dropdown">
             <button class="avatar-btn" data-bs-toggle="dropdown" aria-expanded="false">
