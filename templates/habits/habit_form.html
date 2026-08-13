@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if habit %}Edit Habit{% else %}Create Habit{% endif %} - FocusForge{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/task_form.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="task-form-page">
+    <div class="form-container">
+        <div class="form-header">
+            <a href="{% url 'habits:habit_list' %}" class="back-link">
+                <i class="bi bi-arrow-left"></i> Habits
+            </a>
+            <h1 class="page-title">{% if habit %}Edit Habit{% else %}Create New Habit{% endif %}</h1>
+            <p class="page-subtitle">{% if habit %}Update your habit details.{% else %}Build consistency, one day at a time.{% endif %}</p>
+        </div>
+
+        <div class="form-card glass">
+            <form method="post" id="habitForm">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label class="form-label">Habit Name <span class="required">*</span></label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="form-error">{{ form.name.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    {{ form.category }}
+                    <p class="form-hint">Choose a category that best describes your habit</p>
+                    {% if form.category.errors %}
+                        <div class="form-error">{{ form.category.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Frequency</label>
+                    {{ form.frequency }}
+                    {% if form.frequency.errors %}
+                        <div class="form-error">{{ form.frequency.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Target Days (Optional)</label>
+                    {{ form.target_days }}
+                    <p class="form-hint">1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun. Leave blank for every day.</p>
+                    {% if form.target_days.errors %}
+                        <div class="form-error">{{ form.target_days.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-actions">
+                    <a href="{% url 'habits:habit_list' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-{% if habit %}check-lg{% else %}plus-lg{% endif %}"></i> 
+                        {% if habit %}Save Changes{% else %}Create Habit{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus name field
+    const nameField = document.querySelector('[name="name"]');
+    if (nameField) {
+        setTimeout(() => nameField.focus(), 100);
+    }
+    
+    // Simple validation
+    const form = document.getElementById('habitForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!nameField.value.trim()) {
+                e.preventDefault();
+                nameField.focus();
+                nameField.style.borderColor = 'var(--danger)';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
