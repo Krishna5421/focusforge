@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 class Habit(models.Model):
@@ -7,12 +8,25 @@ class Habit(models.Model):
         ('DAILY', 'Daily'),
         ('WEEKLY', 'Weekly'),
     ]
+    
+    CATEGORY_CHOICES = [
+        ('health', 'Health & Wellness'),
+        ('fitness', 'Fitness & Exercise'),
+        ('study', 'Study & Learning'),
+        ('work', 'Work & Career'),
+        ('personal', 'Personal Development'),
+        ('mindfulness', 'Mindfulness & Meditation'),
+        ('creative', 'Creative Hobbies'),
+        ('social', 'Social & Relationships'),
+        ('other', 'Other'),
+    ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='habits')
     name = models.CharField(max_length=100)
-    icon = models.CharField(max_length=10, blank=True)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other')
+    icon = models.CharField(max_length=20, blank=True)  # Auto-filled based on category
     frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='DAILY')
-    target_days = models.JSONField(default=list, blank=True)  # e.g. [1,2,3,4,5] for weekdays
+    target_days = models.JSONField(default=list, blank=True)
 
     current_streak = models.IntegerField(default=0)
     longest_streak = models.IntegerField(default=0)
@@ -26,12 +40,33 @@ class Habit(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        # Auto-assign icon based on category
+        icon_map = {
+            'health': 'bi-heart-fill',
+            'fitness': 'bi-lightning-fill',
+            'study': 'bi-book-fill',
+            'work': 'bi-briefcase-fill',
+            'personal': 'bi-person-fill',
+            'mindfulness': 'bi-yin-yang',
+            'creative': 'bi-palette-fill',
+            'social': 'bi-people-fill',
+            'other': 'bi-star-fill',
+        }
+        if self.category and not self.icon:
+            self.icon = icon_map.get(self.category, 'bi-star-fill')
+        super().save(*args, **kwargs)
+
     def completion_rate(self):
-        total_logs = self.logs.count()
-        if total_logs == 0:
+        created_date = self.created_at.date()
+        today = timezone.now().date()
+        days_since_created = (today - created_date).days + 1
+        
+        if days_since_created <= 0:
             return 0
-        completed_logs = self.logs.filter(completed=True).count()
-        return round((completed_logs / total_logs) * 100, 1)
+            
+        completed_days = self.logs.filter(completed=True).count()
+        return round((completed_days / days_since_created) * 100, 1)
 
 
 class HabitLog(models.Model):
