@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Habits - FocusForge{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/habit_list.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Habits</h1>
+        <p class="page-sub">Build consistency, one day at a time.</p>
+    </div>
+    <a href="{% url 'habits:habit_create' %}" class="btn-primary">
+        <i class="bi bi-plus-lg"></i> Add New Habit
+    </a>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-total"><i class="bi bi-stars"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Active Habits</div>
+            <div class="stat-value" id="statTotal">{{ total_habits }}</div>
+            <div class="stat-sub">Total tracking</div>
+        </div>
+    </div>
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-completed"><i class="bi bi-check2-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Done Today</div>
+            <div class="stat-value" id="statCompleted">{{ completed_today_count }}</div>
+            <div class="stat-sub">Out of {{ total_habits }}</div>
+        </div>
+    </div>
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-progress"><i class="bi bi-fire"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Active Streaks</div>
+            <div class="stat-value" id="statStreaks">{{ active_streaks }}</div>
+            <div class="stat-sub">Keep it going</div>
+        </div>
+    </div>
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-overdue"><i class="bi bi-trophy"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Best Streak</div>
+            <div class="stat-value" id="statBest">{{ best_streak }}</div>
+            <div class="stat-sub">Days in a row</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="tasks-layout">
+    <!-- Habit List Section -->
+    <div class="tasks-main glass card-pad">
+        <div class="section-header">
+            <h2 class="section-title">My Habits</h2>
+            <div class="section-actions">
+                <button class="btn-secondary" id="filterToggle">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Panel -->
+<div class="filter-panel" id="filterPanel" style="display: none;">
+    <form method="get" class="filter-form">
+        <div class="form-group">
+            <label>Frequency</label>
+            <div class="custom-select-wrapper">
+                <div class="custom-select">
+                    <div class="custom-select__trigger">
+                        <span>{% if request.GET.frequency == 'DAILY' %}Daily{% elif request.GET.frequency == 'WEEKLY' %}Weekly{% else %}All Frequencies{% endif %}</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="custom-options">
+                        <span class="custom-option" data-value="">All Frequencies</span>
+                        <span class="custom-option" data-value="DAILY">Daily</span>
+                        <span class="custom-option" data-value="WEEKLY">Weekly</span>
+                    </div>
+                    <input type="hidden" name="frequency" value="{{ request.GET.frequency }}">
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn-primary">Apply</button>
+        </div>
+    </form>
+</div>
+
+        <!-- Habit Table -->
+        <div class="task-table-wrapper">
+            <div class="task-table-header">
+                <div class="th-check"></div>
+                <div class="th-task">Habit</div>
+                <div class="th-priority">Frequency</div>
+                <div class="th-due">Streak</div>
+                <div class="th-status">Progress</div>
+                <div class="th-actions"></div>
+            </div>
+            <div class="task-table-body">
+                {% for habit in habits %}
+                <div class="task-row-item" data-habit-id="{{ habit.id }}">
+                    <div class="td-check">
+                        <button type="button"
+                                class="task-check {% if habit.completed_today %}done{% endif %}"
+                                data-habit-id="{{ habit.id }}">
+                            {% if habit.completed_today %}
+                                <i class="bi bi-check"></i>
+                            {% endif %}
+                        </button>
+                    </div>
+                    <div class="td-task">
+    <span class="task-title {% if habit.completed_today %}task-done{% endif %}">
+        <i class="bi {{ habit.icon }}" style="margin-right: 8px; color: var(--secondary);"></i>
+        {{ habit.name }}
+    </span>
+    {% if habit.category %}
+        <span class="category-tag" style="margin-left: 8px; background: rgba(45, 212, 191, 0.1); color: var(--secondary); border: 1px solid rgba(45, 212, 191, 0.3);">
+            {{ habit.get_category_display }}
+        </span>
+    {% endif %}
+</div>
+                    <div class="td-priority">
+                        <span class="priority-badge priority-{{ habit.frequency|lower }}">
+                            <i class="bi bi-{% if habit.frequency == 'DAILY' %}calendar-check{% else %}calendar-week{% endif %}"></i>
+                            {{ habit.get_frequency_display }}
+                        </span>
+                    </div>
+                    <div class="td-due">
+                        {% if habit.current_streak > 0 %}
+                            <span class="streak-badge"><i class="bi bi-fire"></i> {{ habit.current_streak }} days</span>
+                        {% else %}
+                            <span class="text-muted">0 days</span>
+                        {% endif %}
+                    </div>
+                    <div class="td-status">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="width: {{ habit.completion_rate }}%;"></div>
+                        </div>
+                        <span class="progress-text">{{ habit.completion_rate }}%</span>
+                    </div>
+                    <div class="td-actions">
+                        <div class="dropdown">
+                            <button class="icon-btn-plain dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'habits:habit_update' habit.pk %}">
+    <i class="bi bi-pencil me-2"></i> Edit
+</a>
+                                </li>
+                                <li>
+                                    <form method="post" action="{% url 'habits:habit_delete' habit.pk %}" style="display:inline; margin:0;" onsubmit="return confirm('Remove this habit?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger" style="border:none; background:none; width:100%; text-align:left; cursor:pointer;">
+                                            <i class="bi bi-trash me-2"></i> Remove
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem;">
+                    <i class="bi bi-stars" style="font-size: 2.5rem; color: var(--text-muted); opacity: 0.3; margin-bottom: 1rem; display: block;"></i>
+                    <p class="empty-text">No habits yet. Start building your routine!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="tasks-sidebar">
+        <!-- Frequency Chart -->
+        <div class="glass card-pad">
+            <h3 class="card-title">Habits by Frequency</h3>
+            <div class="donut-chart-wrap">
+                <canvas id="frequencyChart"></canvas>
+                <div class="chart-center">
+                    <div class="chart-total">{{ total_habits }}</div>
+                    <div class="chart-label">Total</div>
+                </div>
+            </div>
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #63B3ED;"></span>
+                    <span class="legend-label">Daily</span>
+                    <span class="legend-value">{{ daily_count }}</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #8B5CF6;"></span>
+                    <span class="legend-label">Weekly</span>
+                    <span class="legend-value">{{ weekly_count }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Calendar Widget -->
+        <div class="glass card-pad">
+            <div class="card-header-row">
+                <h3 class="card-title" id="calendarMonthYear">Month Year</h3>
+            </div>
+            <div class="mini-calendar">
+                <div class="calendar-header">
+                    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="calendar-legend">
+                    <div class="legend-item-mini">
+                        <span class="legend-dot-mini completed"></span>
+                        <span>Completed</span>
+                    </div>
+                    <div class="legend-item-mini">
+                        <span class="legend-dot-mini today"></span>
+                        <span>Today</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+    const frequencyData = {
+        daily: {{ daily_count }},
+        weekly: {{ weekly_count }}
+    };
+    const csrfToken = '{{ csrf_token }}';
+</script>
+<script src="{% static 'js/habit_list.js' %}"></script>
+{% endblock %}
