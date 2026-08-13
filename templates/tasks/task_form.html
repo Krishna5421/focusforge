@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create New Task - FocusForge{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/task_form.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="task-form-page">
+    <div class="form-container">
+        <!-- Header -->
+        <div class="form-header">
+            <a href="{% url 'tasks:task_list' %}" class="back-link">
+                <i class="bi bi-arrow-left"></i> Tasks
+            </a>
+            <h1 class="page-title">Create New Task</h1>
+            <p class="page-subtitle">Define your next focus area.</p>
+        </div>
+
+        <!-- Form Card -->
+        <div class="form-card glass">
+            <form method="post" id="taskForm" novalidate>
+                {% csrf_token %}
+
+                <!-- 🚨 Global Error Banner -->
+                {% if form.errors %}
+                <div class="error-banner">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                        <strong>Please fix the errors below.</strong>
+                        <p>There are issues with your input that need attention.</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Task Title -->
+                <div class="form-group">
+                    <label class="form-label">Task Title <span class="required">*</span></label>
+                    <input type="text" 
+                           name="title" 
+                           id="id_title"
+                           class="form-input"
+                           placeholder="What needs to be done?"
+                           value="{{ form.title.value|default_if_none:'' }}"
+                           required>
+                    {% if form.title.errors %}
+                        <div class="field-error"><i class="bi bi-info-circle"></i> {{ form.title.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <div class="textarea-wrapper">
+                        <textarea name="description" 
+                                  class="form-textarea" 
+                                  rows="4"
+                                  placeholder="Add details, context, or subtasks...">{{ form.description.value|default_if_none:'' }}</textarea>
+                        <span class="char-counter"><span id="charCount">0</span> / 500</span>
+                    </div>
+                </div>
+
+                <!-- Category & Priority Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select" id="categorySelect">
+                                <div class="custom-select__trigger">
+                                    <span id="categoryText">
+                                        {% if form.category.value %}
+                                            {% for category in categories %}
+                                                {% if category.id|stringformat:"s" == form.category.value %}{{ category.name }}{% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            Select category
+                                        {% endif %}
+                                    </span>
+                                    <i class="bi bi-chevron-down"></i>
+                                </div>
+                                <div class="custom-options">
+                                    <span class="custom-option" data-value="">Select category</span>
+                                    {% for category in categories %}
+                                        <span class="custom-option" data-value="{{ category.id }}" 
+                                              {% if category.id|stringformat:"s" == form.category.value %}data-selected="true"{% endif %}>
+                                            {{ category.name }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" name="category" id="categoryInput" value="{{ form.category.value|default_if_none:'' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <div class="priority-selector">
+                            <input type="radio" name="priority" value="HIGH" id="pri-high" 
+                                   {% if form.priority.value == 'HIGH' %}checked{% endif %}>
+                            <label for="pri-high" class="priority-btn high">
+                                <i class="bi bi-arrow-up"></i> High
+                            </label>
+
+                            <input type="radio" name="priority" value="MEDIUM" id="pri-medium" 
+                                   {% if form.priority.value == 'MEDIUM' or not form.priority.value %}checked{% endif %}>
+                            <label for="pri-medium" class="priority-btn medium">
+                                <i class="bi bi-dash"></i> Medium
+                            </label>
+
+                            <input type="radio" name="priority" value="LOW" id="pri-low" 
+                                   {% if form.priority.value == 'LOW' %}checked{% endif %}>
+                            <label for="pri-low" class="priority-btn low">
+                                <i class="bi bi-arrow-down"></i> Low
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Due Date & Time Row -->
+<div class="form-row">
+    <div class="form-group">
+        <label class="form-label">Due Date</label>
+        <div class="datetime-box" onclick="document.getElementById('id_due_date').showPicker()">
+            <input type="date" id="id_due_date" name="due_date" 
+                   value="{{ form.due_date.value|date:'Y-m-d'|default_if_none:'' }}">
+            <i class="bi bi-calendar3"></i>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">Due Time</label>
+        <div class="datetime-box" onclick="document.getElementById('id_due_time').showPicker()">
+            <input type="time" id="id_due_time" name="due_time" 
+                   value="{{ form.due_date.value|date:'H:i'|default_if_none:'' }}">
+            <i class="bi bi-clock"></i>
+        </div>
+    </div>
+</div>
+
+                <!-- Tags & Status Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Tags</label>
+                        <input type="text" 
+                               name="tags" 
+                               class="form-input"
+                               placeholder="e.g. work, urgent, study"
+                               value="{{ form.tags.value|default_if_none:'' }}">
+                        <p class="form-hint">Separate multiple tags with commas</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select" id="statusSelect">
+                                <div class="custom-select__trigger">
+                                    <span id="statusText">
+                                        {% if form.status.value == 'PENDING' %}Pending
+                                        {% elif form.status.value == 'IN_PROGRESS' %}In Progress
+                                        {% elif form.status.value == 'COMPLETED' %}Completed
+                                        {% else %}Pending{% endif %}
+                                    </span>
+                                    <i class="bi bi-chevron-down"></i>
+                                </div>
+                                <div class="custom-options">
+                                    <span class="custom-option" data-value="PENDING">Pending</span>
+                                    <span class="custom-option" data-value="IN_PROGRESS">In Progress</span>
+                                    <span class="custom-option" data-value="COMPLETED">Completed</span>
+                                </div>
+                                <input type="hidden" name="status" id="statusInput" value="{{ form.status.value|default_if_none:'PENDING' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Repeating Task Toggle -->
+                <div class="form-group toggle-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" name="is_repeating" id="isRepeating" {% if form.is_repeating.value %}checked{% endif %}>
+                        <span class="toggle-switch"></span>
+                        <div class="toggle-content">
+                            <span class="toggle-title">Repeating Task</span>
+                            <span class="toggle-desc">This task will repeat based on frequency</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Repeat Frequency -->
+                <div class="form-group" id="repeatFrequencyGroup" style="display: {% if form.is_repeating.value %}block{% else %}none{% endif %};">
+                    <label class="form-label">Repeat Frequency</label>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select" id="freqSelect">
+                            <div class="custom-select__trigger">
+                                <span id="freqText">
+                                    {% if form.repeat_frequency.value == 'DAILY' %}Daily
+                                    {% elif form.repeat_frequency.value == 'WEEKLY' %}Weekly
+                                    {% elif form.repeat_frequency.value == 'MONTHLY' %}Monthly
+                                    {% else %}Daily{% endif %}
+                                </span>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="custom-options">
+                                <span class="custom-option" data-value="DAILY">Daily</span>
+                                <span class="custom-option" data-value="WEEKLY">Weekly</span>
+                                <span class="custom-option" data-value="MONTHLY">Monthly</span>
+                            </div>
+                            <input type="hidden" name="repeat_frequency" id="freqInput" value="{{ form.repeat_frequency.value|default_if_none:'DAILY' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <a href="{% url 'tasks:task_list' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Create Task
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar Tips -->
+    <div class="tips-sidebar">
+        <div class="sidebar-card glass">
+            <h3 class="tips-title">
+                <i class="bi bi-lightbulb-fill"></i> Pro Tips
+            </h3>
+            <div class="tips-list">
+                <div class="tip-item">
+                    <strong>Be Specific</strong>
+                    <p>"Write report" vs "Draft Q3 financial summary"</p>
+                </div>
+                <div class="tip-item">
+                    <strong>One Action Per Task</strong>
+                    <p>If it has "and" in it, break it down.</p>
+                </div>
+                <div class="tip-item">
+                    <strong>Set Realistic Deadlines</strong>
+                    <p>Parkinson's Law: work expands to fill time.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="quote-card glass">
+            <i class="bi bi-quote quote-icon"></i>
+            <p class="quote-text">"The secret of getting ahead is getting started."</p>
+            <cite class="quote-author">— Mark Twain</cite>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/task_form.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. Toggle Repeat Frequency
+        const isRepeating = document.getElementById('isRepeating');
+        const freqGroup = document.getElementById('repeatFrequencyGroup');
+        if (isRepeating && freqGroup) {
+            isRepeating.addEventListener('change', function() {
+                freqGroup.style.display = this.checked ? 'block' : 'none';
+            });
+        }
+
+        // 2. Initialize Custom Selects (Category, Status, Frequency)
+        document.querySelectorAll('.custom-select').forEach(select => {
+            const trigger = select.querySelector('.custom-select__trigger');
+            const options = select.querySelectorAll('.custom-option');
+            const hiddenInput = select.querySelector('input[type="hidden"]');
+            const triggerText = trigger.querySelector('span');
+            
+            const currentValue = hiddenInput.value;
+            options.forEach(opt => {
+                if (opt.getAttribute('data-value') === currentValue || opt.getAttribute('data-selected') === 'true') {
+                    opt.classList.add('selected');
+                }
+            });
+
+            trigger.addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.querySelectorAll('.custom-select.open').forEach(s => {
+                    if (s !== select) s.classList.remove('open');
+                });
+                select.classList.toggle('open');
+            });
+            
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    triggerText.textContent = this.textContent;
+                    hiddenInput.value = this.getAttribute('data-value');
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    select.classList.remove('open');
+                });
+            });
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.custom-select')) {
+                document.querySelectorAll('.custom-select.open').forEach(s => s.classList.remove('open'));
+            }
+        });
+
+        // 3. Client-Side Validation for Title
+        const form = document.getElementById('taskForm');
+        const titleInput = document.getElementById('id_title');
+        
+        form.addEventListener('submit', function(e) {
+            if (!titleInput.value.trim()) {
+                e.preventDefault();
+                titleInput.classList.add('input-error');
+                titleInput.focus();
+                
+                // Add error message if not exists
+                let errorMsg = titleInput.parentElement.querySelector('.field-error');
+                if (!errorMsg) {
+                    errorMsg = document.createElement('div');
+                    errorMsg.className = 'field-error';
+                    errorMsg.innerHTML = '<i class="bi bi-info-circle"></i> Task title is required';
+                    titleInput.parentElement.appendChild(errorMsg);
+                }
+            }
+        });
+
+        // Remove error styling on input
+        if (titleInput) {
+            titleInput.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    this.classList.remove('input-error');
+                    const errorMsg = this.parentElement.querySelector('.field-error');
+                    if (errorMsg) errorMsg.remove();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
