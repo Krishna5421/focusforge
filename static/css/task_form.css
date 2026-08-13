@@ -1,0 +1,712 @@
+/* =========================================
+   1. PAGE LAYOUT & HEADER
+   ========================================= */
+
+.task-form-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+    padding: 3rem 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.form-container {
+    max-width: 720px;
+    width: 100%;
+}
+
+.form-header {
+    margin-bottom: 1.5rem;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    transition: color 0.2s ease;
+}
+
+.back-link:hover {
+    color: var(--secondary);
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.375rem;
+}
+
+.page-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* =========================================
+   2. FORM CARD & BASIC INPUTS
+   ========================================= */
+
+.form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.75rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.required {
+    color: var(--danger);
+}
+
+.form-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.375rem;
+}
+
+/* Standard Inputs & Selects */
+.form-input,
+.form-select {
+    width: 100%;
+    background: var(--bg-card-hover);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.form-input:hover,
+.form-select:hover {
+    border-color: var(--border-strong);
+}
+
+.form-input:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.1);
+}
+
+.form-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* =========================================
+   3. SPECIALIZED INPUTS
+   ========================================= */
+
+/* Textarea */
+.textarea-wrapper {
+    position: relative;
+}
+
+.form-textarea {
+    width: 100%;
+    background: var(--bg-card-hover);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+    line-height: 1.6;
+    transition: all 0.2s ease;
+    min-height: 100px;
+}
+
+.form-textarea:hover {
+    border-color: var(--border-strong);
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.1);
+}
+
+.char-counter {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Grid Layout for Rows */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Priority Selector Buttons */
+.priority-selector {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.priority-selector input[type="radio"] {
+    display: none;
+}
+
+.priority-btn {
+    flex: 1;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+}
+
+.priority-btn.high { background: rgba(231, 122, 122, 0.1); color: #E77A7A; }
+.priority-btn.medium { background: rgba(229, 176, 84, 0.1); color: #E5B054; }
+.priority-btn.low { background: rgba(99, 201, 137, 0.1); color: #63C989; }
+
+.priority-selector input[type="radio"]:checked + .priority-btn {
+    border-color: currentColor;
+    box-shadow: 0 0 0 2px currentColor;
+}
+
+/* Toggle Switch */
+.toggle-group {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--bg-card-hover);
+    border-radius: 10px;
+    border: 1px solid var(--border-subtle);
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-switch {
+    width: 42px;
+    height: 24px;
+    background: var(--border-strong);
+    border-radius: 12px;
+    position: relative;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: all 0.3s ease;
+}
+
+.toggle-label input[type="checkbox"]:checked + .toggle-switch {
+    background: var(--secondary);
+}
+
+.toggle-label input[type="checkbox"]:checked + .toggle-switch::after {
+    left: 21px;
+}
+
+.toggle-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.toggle-title {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+.toggle-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Clickable Date/Time Boxes */
+.datetime-box {
+    display: flex;
+    align-items: center;
+    background: var(--bg-card-hover);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 0 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.datetime-box:hover {
+    border-color: var(--border-strong);
+    background: var(--bg-hover);
+}
+
+.datetime-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    padding: 0.75rem 0;
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.datetime-box input:invalid {
+    color: var(--text-muted);
+}
+
+.datetime-box i {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.datetime-box:focus-within {
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.1);
+}
+
+/* =========================================
+   4. CUSTOM DROPDOWNS (Dark Theme)
+   ========================================= */
+
+.custom-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-select__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--bg-card-hover);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.custom-select__trigger:hover {
+    border-color: var(--border-strong);
+}
+
+.custom-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: rgba(10, 15, 22, 0.98);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    z-index: 1000;
+    max-height: 250px;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.custom-select.open .custom-options {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+    transform: translateY(0);
+}
+
+.custom-option {
+    display: block;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    background: transparent;
+}
+
+.custom-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+
+.custom-option.selected {
+    background: rgba(45, 212, 191, 0.15);
+    color: var(--secondary);
+    font-weight: 600;
+}
+
+.custom-options::-webkit-scrollbar { width: 6px; }
+.custom-options::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+.custom-options::-webkit-scrollbar-track { background: transparent; }
+
+/* =========================================
+   5. NATIVE SELECT FALLBACKS & EMPTY STATES
+   ========================================= */
+
+/* Force dark theme on native dropdown options */
+.form-select option,
+select option {
+    background-color: var(--bg-card) !important;
+    color: var(--text) !important;
+    padding: 10px;
+}
+
+.form-select option:hover,
+select option:hover {
+    background-color: var(--bg-card-hover) !important;
+}
+
+.form-select option:checked {
+    background: var(--secondary) !important;
+    color: white !important;
+}
+
+/* Empty State Styling */
+.empty-select {
+    background: var(--bg-card-hover);
+    border: 1px dashed var(--border-subtle);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.empty-select-text {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-select-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.empty-select-link:hover {
+    opacity: 0.8;
+}
+
+/* =========================================
+   6. ERROR NOTIFICATIONS
+   ========================================= */
+
+.error-banner {
+    background: rgba(231, 122, 122, 0.1);
+    border: 1px solid rgba(231, 122, 122, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    color: #E77A7A;
+}
+
+.error-banner i {
+    font-size: 1.25rem;
+    margin-top: 2px;
+}
+
+.error-banner strong {
+    display: block;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.error-banner p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(231, 122, 122, 0.8);
+}
+
+.field-error,
+.form-error {
+    color: #E77A7A;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.input-error {
+    border-color: #E77A7A !important;
+    box-shadow: 0 0 0 3px rgba(231, 122, 122, 0.1) !important;
+}
+
+/* =========================================
+   7. FORM ACTIONS (BUTTONS)
+   ========================================= */
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: var(--bg-card-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--secondary), #9b5cf6);
+    color: white;
+    box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 212, 191, 0.4);
+}
+
+/* =========================================
+   8. SIDEBAR (TIPS & QUOTES)
+   ========================================= */
+
+.tips-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: sticky;
+    top: 5rem;
+    height: fit-content;
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
+}
+
+.sidebar-card,
+.quote-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.tips-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tips-title i {
+    color: var(--secondary);
+    font-size: 1.1rem;
+}
+
+.tips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.tip-item {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.tip-item:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.tip-item strong {
+    display: block;
+    color: var(--text);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.tip-item p {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Quote Card Specifics */
+.quote-card {
+    text-align: center;
+}
+
+.quote-icon {
+    font-size: 1.5rem;
+    color: var(--secondary);
+    opacity: 0.3;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.quote-text {
+    font-size: 0.9rem;
+    color: var(--text);
+    line-height: 1.5;
+    margin: 0 0 0.5rem 0;
+    font-style: italic;
+}
+
+.quote-author {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: normal;
+}
+
+/* =========================================
+   9. RESPONSIVE DESIGN
+   ========================================= */
+
+@media (max-width: 1024px) {
+    .task-form-page {
+        flex-direction: column;
+        padding: 2rem 1.5rem;
+    }
+    
+    .tips-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .task-form-page {
+        padding: 1.5rem 1rem;
+    }
+    
+    .form-card {
+        padding: 1.25rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .priority-selector {
+        flex-direction: column;
+    }
+}
+
+/* Hide native browser calendar/clock icons only */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0; /* Makes native icon invisible but still clickable */
+}
+
+/* For Firefox */
+input[type="date"],
+input[type="time"] {
+    position: relative;
+}
+
+input[type="date"]::-webkit-inner-spin-button,
+input[type="time"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
