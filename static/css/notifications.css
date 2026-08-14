@@ -1,0 +1,8 @@
+/* Notifications page — unread state highlight */
+
+.task-row.unread {
+    background: var(--primary-dim);
+    border-radius: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
