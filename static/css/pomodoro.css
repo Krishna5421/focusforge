@@ -1,0 +1,49 @@
+/* Pomodoro timer page */
+
+.pomodoro-card {
+    text-align: center;
+    padding: 40px 20px;
+    margin-bottom: 14px;
+}
+
+.pomodoro-display {
+    font-size: 4.5rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    letter-spacing: -0.03em;
+    margin-bottom: 24px;
+}
+
+.pomodoro-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+.pomodoro-controls select,
+.pomodoro-controls input {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+}
+.pomodoro-controls input { width: 140px; }
+
+.pomodoro-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.pomodoro-buttons button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+    .pomodoro-display { font-size: 3rem; }
+    .pomodoro-controls, .pomodoro-buttons { flex-wrap: wrap; }
+}
