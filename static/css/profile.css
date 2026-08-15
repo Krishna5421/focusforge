@@ -1,0 +1,28 @@
+/* Profile and Settings pages */
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.avatar-img-lg, .avatar-initials-lg {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-initials-lg {
+    background: var(--gradient-accent);
+    color: #08131f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.5rem;
+}
+
+.profile-header h2 { font-size: 1.2rem; font-weight: 650; color: var(--text); margin-bottom: 4px; }
+
+.form-card h3 { font-size: 0.9rem; font-weight: 650; color: var(--text); margin-bottom: 4px; }
