@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tasks - FocusForge{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/task_list.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Tasks</h1>
+        <p class="page-sub">Manage and track your productivity</p>
+    </div>
+    <a href="{% url 'tasks:task_create' %}" class="btn-primary">
+        <i class="bi bi-plus-lg"></i> Add New Task
+    </a>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-total"><i class="bi bi-clipboard-check"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Total Tasks</div>
+            <div class="stat-value" id="statTotal">{{ total_tasks }}</div>
+            <div class="stat-sub">All time</div>
+        </div>
+    </div>
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-pending"><i class="bi bi-hourglass-split"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value" id="statPending">{{ pending_tasks }}</div>
+            <div class="stat-sub">To be done</div>
+        </div>
+    </div>
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-progress"><i class="bi bi-arrow-repeat"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">In Progress</div>
+            <div class="stat-value" id="statProgress">{{ in_progress_tasks }}</div>
+            <div class="stat-sub">Keep going</div>
+        </div>
+    </div>
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-completed"><i class="bi bi-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value" id="statCompleted">{{ completed_tasks }}</div>
+            <div class="stat-sub">Great job!</div>
+        </div>
+    </div>
+    <div class="stat-card glass card-pad">
+        <div class="stat-icon stat-overdue"><i class="bi bi-exclamation-triangle"></i></div>
+        <div class="stat-info">
+            <div class="stat-label">Overdue</div>
+            <div class="stat-value" id="statOverdue">{{ overdue_tasks }}</div>
+            <div class="stat-sub">Need attention</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="tasks-layout">
+    <!-- Task List Section -->
+    <div class="tasks-main glass card-pad">
+        <div class="section-header">
+            <h2 class="section-title">All Tasks</h2>
+            <div class="section-actions">
+                <button class="btn-secondary" id="filterToggle">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Panel -->
+        <div class="filter-panel" id="filterPanel" style="display: none;">
+            <form method="get" class="filter-form">
+                {% if request.GET.search %}
+                    <input type="hidden" name="search" value="{{ request.GET.search }}">
+                {% endif %}
+                
+                <!-- Status Filter -->
+                <div class="form-group">
+                    <label>Status</label>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select">
+                            <div class="custom-select__trigger">
+                                <span>{% if request.GET.status == 'PENDING' %}Pending{% elif request.GET.status == 'IN_PROGRESS' %}In Progress{% elif request.GET.status == 'COMPLETED' %}Completed{% else %}All Statuses{% endif %}</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="custom-options">
+                                <span class="custom-option" data-value="">All Statuses</span>
+                                <span class="custom-option" data-value="PENDING">Pending</span>
+                                <span class="custom-option" data-value="IN_PROGRESS">In Progress</span>
+                                <span class="custom-option" data-value="COMPLETED">Completed</span>
+                            </div>
+                            <input type="hidden" name="status" value="{{ request.GET.status }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Priority Filter -->
+                <div class="form-group">
+                    <label>Priority</label>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select">
+                            <div class="custom-select__trigger">
+                                <span>{% if request.GET.priority == 'HIGH' %}High{% elif request.GET.priority == 'MEDIUM' %}Medium{% elif request.GET.priority == 'LOW' %}Low{% else %}All Priorities{% endif %}</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="custom-options">
+                                <span class="custom-option" data-value="">All Priorities</span>
+                                <span class="custom-option" data-value="HIGH">High</span>
+                                <span class="custom-option" data-value="MEDIUM">Medium</span>
+                                <span class="custom-option" data-value="LOW">Low</span>
+                            </div>
+                            <input type="hidden" name="priority" value="{{ request.GET.priority }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select">
+                            <div class="custom-select__trigger">
+                                <span>{% if request.GET.category %}{% for cat in categories %}{% if cat.id|stringformat:"s" == request.GET.category %}{{ cat.name }}{% endif %}{% endfor %}{% else %}All Categories{% endif %}</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="custom-options">
+                                <span class="custom-option" data-value="">All Categories</span>
+                                {% for category in categories %}
+                                    <span class="custom-option" data-value="{{ category.id }}">{{ category.name }}</span>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="category" value="{{ request.GET.category }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apply Button -->
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn-primary">Apply</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Task Table -->
+        <div class="task-table-wrapper">
+            <div class="task-table-header">
+                <div class="th-check"></div>
+                <div class="th-task">Task</div>
+                <div class="th-priority">Priority</div>
+                <div class="th-due">Due Date</div>
+                <div class="th-status">Status</div>
+                <div class="th-actions"></div>
+            </div>
+            <div class="task-table-body">
+                {% for task in tasks %}
+                <div class="task-row-item" data-task-id="{{ task.id }}">
+                    <div class="td-check">
+                        <button type="button"
+                                class="task-check {% if task.status == 'COMPLETED' %}done{% endif %}"
+                                data-task-id="{{ task.id }}">
+                            {% if task.status == 'COMPLETED' %}
+                                <i class="bi bi-check"></i>
+                            {% endif %}
+                        </button>
+                    </div>
+                    <div class="td-task">
+                        <span class="task-title {% if task.status == 'COMPLETED' %}task-done{% endif %}">{{ task.title }}</span>
+                        {% if task.category %}
+                            <span class="category-tag" style="background: {{ task.category.color }}20; color: {{ task.category.color }}; border-color: {{ task.category.color }}40;">
+                                {{ task.category.name }}
+                            </span>
+                        {% endif %}
+                        {% if task.subtask_progress %}
+                            <span class="subtask-tag">{{ task.subtask_progress }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="td-priority">
+                        <span class="priority-badge priority-{{ task.priority|lower }}">
+                            <span class="priority-dot"></span>
+                            {{ task.get_priority_display }}
+                        </span>
+                    </div>
+                    <div class="td-due">
+                        {% if task.due_date %}
+                            <span class="due-date">{{ task.due_date|date:"M d, h:i A" }}</span>
+                        {% else %}
+                            <span class="due-date text-muted">No date</span>
+                        {% endif %}
+                    </div>
+                    <div class="td-status">
+                        <span class="status-badge status-{{ task.status|lower }}">
+                            {{ task.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="td-actions">
+                        <div class="dropdown">
+                            <button class="icon-btn-plain dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'tasks:task_update' task.pk %}">
+                                        <i class="bi bi-pencil me-2"></i> Edit
+                                    </a>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item text-danger" 
+                                            onclick="showDeleteModal('{% url 'tasks:task_delete' task.pk %}', '{{ task.title|escapejs }}')"
+                                            type="button">
+                                        <i class="bi bi-trash me-2"></i> Delete
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state">
+                    <i class="bi bi-clipboard-x"></i>
+                    <p class="empty-text">No tasks found. Create your first task!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="tasks-sidebar">
+        <!-- Priority Chart -->
+        <div class="glass card-pad">
+            <h3 class="card-title">Tasks by Priority</h3>
+            <div class="donut-chart-wrap">
+                <canvas id="priorityChart"></canvas>
+                <div class="chart-center">
+                    <div class="chart-total">{{ total_tasks }}</div>
+                    <div class="chart-label">Total</div>
+                </div>
+            </div>
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #E77A7A;"></span>
+                    <span class="legend-label">High</span>
+                    <span class="legend-value">{{ high_priority }} ({{ high_priority_percent }}%)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: var(--tertiary);"></span>
+                    <span class="legend-label">Medium</span>
+                    <span class="legend-value">{{ medium_priority }} ({{ medium_priority_percent }}%)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #63C989;"></span>
+                    <span class="legend-label">Low</span>
+                    <span class="legend-value">{{ low_priority }} ({{ low_priority_percent }}%)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Deadlines -->
+        <div class="glass card-pad">
+            <div class="card-header-row">
+                <h3 class="card-title">Upcoming Deadlines</h3>
+                <a href="#" class="view-link">View all <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="deadlines-list">
+                {% for task in upcoming_tasks %}
+                <div class="deadline-item">
+                    <div class="deadline-check"><i class="bi bi-circle"></i></div>
+                    <div class="deadline-info">
+                        <div class="deadline-title">{{ task.title }}</div>
+                        <div class="deadline-date">{{ task.due_date|date:"M d, h:i A" }}</div>
+                    </div>
+                    <div class="deadline-icon"><i class="bi bi-calendar-event"></i></div>
+                </div>
+                {% empty %}
+                <p class="empty-text">No upcoming deadlines</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--surface); border: 1px solid var(--border-subtle); border-radius: var(--radius); backdrop-filter: var(--blur);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-subtle); padding: 20px 24px;">
+                <h5 class="modal-title" id="deleteModalLabel" style="color: var(--text); font-size: 1.1rem; font-weight: 650; margin: 0;">Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px; color: var(--text-secondary); font-size: 0.9rem;">
+                <p id="deleteModalText" style="margin: 0;"></p>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-subtle); padding: 16px 24px; gap: 10px;">
+                <button type="button" class="btn-secondary" data-bs-dismiss="modal" style="margin: 0;">Cancel</button>
+                <form id="deleteModalForm" method="post" style="display: inline; margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-danger" style="margin: 0;">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<script>
+    const priorityData = {
+        high: {{ high_priority }},
+        medium: {{ medium_priority }},
+        low: {{ low_priority }}
+    };
+    const csrfToken = '{{ csrf_token }}';
+
+    function showDeleteModal(url, taskName) {
+        const modalTextEl = document.getElementById('deleteModalText');
+        const modalFormEl = document.getElementById('deleteModalForm');
+        const deleteModalEl = document.getElementById('deleteModal');
+        
+        if (!modalTextEl || !modalFormEl || !deleteModalEl) return;
+        
+        modalTextEl.textContent = 'Are you sure you want to delete "' + taskName + '"? This action cannot be undone.';
+        modalFormEl.setAttribute('action', url);
+        
+        let deleteModal = bootstrap.Modal.getInstance(deleteModalEl);
+        if (!deleteModal) deleteModal = new bootstrap.Modal(deleteModalEl);
+        deleteModal.show();
+    }
+</script>
+
+<script src="{% static 'js/task_list.js' %}"></script>
+{% endblock %}
