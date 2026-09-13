@@ -9,4 +9,8 @@ urlpatterns = [
     path('<int:pk>/', views.goal_detail, name='goal_detail'),
     path('<int:pk>/delete/', views.goal_delete, name='goal_delete'),
     path('milestone/<int:pk>/toggle/', views.milestone_toggle, name='milestone_toggle'),
+    path('ajax/create/', views.ajax_goal_create, name='ajax_goal_create'),
+    path('ajax/<int:pk>/update/', views.ajax_goal_update, name='ajax_goal_update'),
+    path('ajax/<int:pk>/delete/', views.ajax_goal_delete, name='ajax_goal_delete'),
+    path('ajax/milestone/<int:pk>/toggle/', views.ajax_milestone_toggle, name='ajax_milestone_toggle'),
 ]
