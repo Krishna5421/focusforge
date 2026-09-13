@@ -6,6 +6,7 @@ urlpatterns = [
     path('analytics/habit-consistency/', api_views.HabitConsistencyAPIView.as_view(), name='api_habit_consistency'),
     path('analytics/study-breakdown/', api_views.StudyBreakdownAPIView.as_view(), name='api_study_breakdown'),
     path('analytics/focus-trend/', api_views.FocusTimeTrendAPIView.as_view(), name='api_focus_trend'),
+    path('analytics/weekly-progress/', api_views.WeeklyProgressAPIView.as_view(), name='api_weekly_progress'),
     path('analytics/goal-progress/', api_views.GoalProgressAPIView.as_view(), name='api_goal_progress'),
     path('dashboard-summary/', api_views.DashboardSummaryAPIView.as_view(), name='api_dashboard_summary'),
     path('dashboard-stats/', api_views.DashboardStatsAPIView.as_view(), name='api_dashboard_stats'),
