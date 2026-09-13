@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 class Profile(models.Model):
@@ -23,3 +24,14 @@ class Profile(models.Model):
 
     def get_level(self):
         return self.total_xp // 100 + 1
+
+
+class PasswordResetOTP(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='password_reset_otp')
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now=True)
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
