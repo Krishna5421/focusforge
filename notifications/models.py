@@ -8,7 +8,15 @@ class Notification(models.Model):
         ('HABIT_REMINDER', 'Habit Reminder'),
         ('GOAL_DEADLINE', 'Goal Deadline'),
         ('POMODORO_ABANDONED', 'Pomodoro Abandoned'),
+        ('FOCUS_COMPLETED', 'Focus Session Completed'),
         ('TASK_COMPLETED', 'Task Completed'),
+        ('HABIT_COMPLETED', 'Habit Completed'),
+        ('STREAK_MILESTONE', 'Streak Milestone'),
+        ('STUDY_COMPLETED', 'Study Session Completed'),
+        ('MILESTONE_COMPLETED', 'Milestone Completed'),
+        ('GOAL_COMPLETED', 'Goal Completed'),
+        ('ACHIEVEMENT_UNLOCKED', 'Achievement Unlocked'),
+        ('STUDY_REMINDER', 'Study Reminder'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
