@@ -11,4 +11,7 @@ urlpatterns = [
     path('<int:pk>/toggle/', views.task_toggle_status, name='task_toggle_status'),
     path('ajax/<int:pk>/toggle/', views.ajax_toggle_status, name='ajax_toggle_status'),
     path('ajax/<int:pk>/delete/', views.ajax_delete_task, name='ajax_delete_task'),
+    path('ajax/create/', views.ajax_task_create, name='ajax_task_create'),
+    path('ajax/<int:pk>/update/', views.ajax_task_update, name='ajax_task_update'),
+    path('ajax/bulk/', views.ajax_bulk_tasks, name='ajax_bulk_tasks'),
 ]
