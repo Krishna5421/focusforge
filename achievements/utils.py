@@ -24,6 +24,14 @@ def award_xp(user, action_type):
     return amount
 
 
+def remove_xp(user, action_type):
+    amount = XP_VALUES.get(action_type, 0)
+    profile = user.profile
+    profile.total_xp = max(0, profile.total_xp - amount)
+    profile.save(update_fields=['total_xp', 'updated_at'])
+    return amount
+
+
 def unlock_achievement(user, achievement):
     already_unlocked = UserAchievement.objects.filter(user=user, achievement=achievement).exists()
     if not already_unlocked:
@@ -31,6 +39,9 @@ def unlock_achievement(user, achievement):
         profile = user.profile
         profile.total_xp += achievement.xp_reward
         profile.save()
+        from notifications.utils import notify_once
+        notify_once(user, 'ACHIEVEMENT_UNLOCKED', 'Achievement unlocked!',
+                    f'{achievement.name} · +{achievement.xp_reward} XP earned.', achievement.pk)
         return True
     return False
 
