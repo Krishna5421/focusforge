@@ -1,0 +1,66 @@
+{% extends 'base.html' %} {% block title %}{{ goal.title }} · FocusForge{%
+endblock %} {% block content %}
+<div class="page-head">
+  <div>
+    <a class="card-action" href="{% url 'goals:goal_list' %}">← Goals</a>
+    <h2>{{ goal.title }}</h2>
+    <p>{{ goal.description }}</p>
+  </div>
+  <form
+    method="post"
+    action="{% url 'goals:goal_delete' goal.pk %}"
+    onsubmit="return confirm('Delete this goal?');"
+  >
+    {% csrf_token %}<button class="btn btn-danger-ghost">Delete Goal</button>
+  </form>
+</div>
+<div class="goal-card">
+  <div class="goal-card-meta">
+    <span>Deadline: {{ goal.deadline|date:'F j, Y' }}</span
+    ><span>{{ goal.completion_percentage }}% complete</span>
+  </div>
+  <div class="progress-bar">
+    <div
+      class="progress-fill"
+      style="width:{{ goal.completion_percentage }}%"
+    ></div>
+  </div>
+  <div class="milestones">
+    {% for milestone in milestones %}
+    <div class="milestone {% if milestone.is_completed %}done{% endif %}">
+      <form
+        method="post"
+        action="{% url 'goals:milestone_toggle' milestone.pk %}"
+      >
+        {% csrf_token %}<button
+          class="milestone-check {% if milestone.is_completed %}done{% endif %}"
+        >
+          <i class="bi bi-check"></i>
+        </button>
+      </form>
+      <span class="milestone-title">{{ milestone.title }}</span>
+    </div>
+    {% empty %}
+    <p style="color: var(--text-2)">No milestones yet.</p>
+    {% endfor %}
+  </div>
+</div>
+<div class="card">
+  <div class="card-head"><div class="card-title">Add Milestone</div></div>
+  <div class="card-body">
+    <form method="post" class="toolbar">
+      {% csrf_token %}<input
+        class="form-input"
+        name="title"
+        placeholder="Milestone title"
+      /><input
+        class="form-input"
+        name="order"
+        type="number"
+        value="0"
+        min="0"
+      /><button class="btn btn-primary">Add Milestone</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

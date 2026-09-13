@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusForge — {% if initial_view == 'register' %}Register{% else %}Login{% endif %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
+
+<div class="auth-page">
+    <div class="bg-glow"></div>
+    <div class="bg-rings"></div>
+    <div class="bg-dots"></div>
+
+    <div class="auth-card {% if initial_view == 'register' %}right-panel-active{% endif %}" id="authCard">
+
+        <!-- LOGIN FORM -->
+        <div class="form-container login-container">
+            <form method="post" action="{% url 'accounts:login' %}" class="auth-form">
+                {% csrf_token %}
+                <div class="auth-logo">
+                    <img class="brand-logo" src="{% static 'images/focusforge-logo.png' %}" alt="FocusForge logo">
+                    <span class="logo-text">Focus<span class="accent">Forge</span></span>
+                </div>
+                <h1>Welcome</h1>
+                <p class="subtitle">Log in to keep your focus streak alive.</p>
+
+                {% if login_form.non_field_errors %}
+                    <p class="form-error">{{ login_form.non_field_errors.0 }}</p>
+                {% endif %}
+
+                <label for="id_username">Username</label>
+                <div class="input-wrap">
+                    <i class="bi bi-person"></i>
+                    {{ login_form.username }}
+                </div>
+
+                <label for="id_password">Password</label>
+                <div class="input-wrap">
+                    <i class="bi bi-lock"></i>
+                    {{ login_form.password }}
+                    <i class="bi bi-eye toggle-password"></i>
+                </div>
+
+                <a href="{% url 'accounts:password_reset' %}" class="forgot-link">Forgot password?</a>
+
+                <button type="submit" class="btn-gradient">Login</button>
+            </form>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div class="form-container register-container">
+            <form method="post" action="{% url 'accounts:register' %}" class="auth-form">
+                {% csrf_token %}
+                <h1>Create your account</h1>
+                <p class="subtitle">Forge better days, starting today.</p>
+
+                {% if register_form.non_field_errors %}
+                    <p class="form-error">{{ register_form.non_field_errors.0 }}</p>
+                {% endif %}
+
+                <label for="id_username">Username</label>
+                <div class="input-wrap">
+                    <i class="bi bi-person"></i>
+                    {{ register_form.username }}
+                </div>
+
+                <div class="input-row">
+                    <div class="input-col">
+                        <label for="id_first_name">First name</label>
+                        <div class="input-wrap">
+                            {{ register_form.first_name }}
+                        </div>
+                    </div>
+                    <div class="input-col">
+                        <label for="id_last_name">Last name</label>
+                        <div class="input-wrap">
+                            {{ register_form.last_name }}
+                        </div>
+                    </div>
+                </div>
+
+                <label for="id_email">Email</label>
+                <div class="input-wrap">
+                    <i class="bi bi-envelope"></i>
+                    {{ register_form.email }}
+                </div>
+
+                <label for="id_password1">Password</label>
+                <div class="input-wrap">
+                    <i class="bi bi-lock"></i>
+                    {{ register_form.password1 }}
+                    <i class="bi bi-eye toggle-password"></i>
+                </div>
+
+                <label for="id_password2">Confirm password</label>
+                <div class="input-wrap">
+                    <i class="bi bi-lock"></i>
+                    {{ register_form.password2 }}
+                    <i class="bi bi-eye toggle-password"></i>
+                </div>
+
+                <button type="submit" class="btn-gradient">Register</button>
+            </form>
+        </div>
+
+        <!-- SLIDING OVERLAY -->
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <div class="auth-logo">
+                        <img class="brand-logo" src="{% static 'images/focusforge-logo.png' %}" alt="FocusForge logo">
+                        <span class="logo-text">Focus<span class="accent">Forge</span></span>
+                    </div>
+                    <h2>Welcome back!</h2>
+                    <p>Your tasks, streaks, and momentum are right where you left them.</p>
+                    <button type="button" class="btn-outline" id="showLogin">Already have an account? Login</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <div class="auth-logo">
+                        <img class="brand-logo" src="{% static 'images/focusforge-logo.png' %}" alt="FocusForge logo">
+                        <span class="logo-text">Focus<span class="accent">Forge</span></span>
+                    </div>
+                    <h2>Ready to forge your focus?</h2>
+                    <p>Plan deep work, build habits, and turn intentions into done — all in one place.</p>
+                    <button type="button" class="btn-outline" id="showRegister">New here? Register</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <p class="auth-tagline">Turn intentions into <span class="accent">done</span> — one focus session at a time.</p>
+</div>
+
+<script src="{% static 'js/auth.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<article class="week-item">
+  {% if item.type == 'Task' %}
+    <button class="week-check deadline-check" type="button" data-task-id="{{ item.task_id }}"
+            aria-label="Complete {{ item.title }}"></button>
+  {% else %}
+    <span class="week-check goal-dot"></span>
+  {% endif %}
+
+  <div>
+    <strong>{{ item.title }}</strong>
+    <small>
+      {{ item.category }} ·
+      {% if item.type == 'Task' %}
+        {{ item.date|date:"D, M d" }}
+      {% else %}
+        {{ item.date|date:"D, M d" }}
+      {% endif %}
+    </small>
+  </div>
+
+  {% if item.type == 'Task' %}
+    <span class="priority priority-{{ item.priority_code }}">{{ item.priority }}</span>
+  {% else %}
+    <a class="text-action" href="{% url 'goals:goal_detail' item.goal_id %}">View Goal</a>
+  {% endif %}
+</article>

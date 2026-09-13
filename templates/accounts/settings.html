@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Profile &middot; FocusForge{% endblock %}
+{% block topbar_title %}Edit Profile{% endblock %}
+{% block topbar_subtitle %}Update your account details{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Edit Profile</h1>
+    <p>Keep your account information up to date.</p>
+  </div>
+  <a class="btn btn-secondary" href="{% url 'accounts:profile' %}">
+    <i class="bi bi-arrow-left"></i> Back to Profile
+  </a>
+</div>
+
+<section class="card profile-edit-card">
+  <div class="card-head">
+    <h2 class="card-title">Profile details</h2>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="profile-edit-form">
+    {% csrf_token %}
+
+    <div class="profile-photo-row">
+      <div class="profile-avatar edit-photo profile-photo-preview" id="profilePicturePreview">
+        {% if request.user.profile.profile_picture %}
+          <img id="profilePicturePreviewImage"
+               src="{{ request.user.profile.profile_picture.url }}"
+               alt="Profile picture preview">
+          <span id="profilePicturePreviewFallback" class="profile-avatar-fallback" hidden>
+            {{ request.user.username|first|upper }}
+          </span>
+        {% else %}
+          <img id="profilePicturePreviewImage" src="" alt="Profile picture preview" hidden>
+          <span id="profilePicturePreviewFallback" class="profile-avatar-fallback">
+            {{ request.user.username|first|upper }}
+          </span>
+        {% endif %}
+      </div>
+
+      <div>
+        <span class="form-label">Profile photo</span>
+        <label class="btn btn-secondary change-photo-button"
+               for="{{ profile_form.profile_picture.id_for_label }}">
+          <i class="bi bi-camera"></i> Change profile picture
+        </label>
+        <div class="hidden-file-input">
+          {{ profile_form.profile_picture }}
+        </div>
+        <p class="form-message">JPG, PNG, or WebP image.</p>
+        {% for error in profile_form.profile_picture.errors %}
+          <p class="field-error">{{ error }}</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="{{ user_form.first_name.id_for_label }}">First name</label>
+        {{ user_form.first_name }}
+        {% for error in user_form.first_name.errors %}
+          <p class="field-error">{{ error }}</p>
+        {% endfor %}
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="{{ user_form.last_name.id_for_label }}">Last name</label>
+        {{ user_form.last_name }}
+        {% for error in user_form.last_name.errors %}
+          <p class="field-error">{{ error }}</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="{{ user_form.username.id_for_label }}">Username</label>
+        {{ user_form.username }}
+        {% for error in user_form.username.errors %}
+          <p class="field-error">{{ error }}</p>
+        {% endfor %}
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="{{ user_form.email.id_for_label }}">Email</label>
+        {{ user_form.email }}
+        {% for error in user_form.email.errors %}
+          <p class="field-error">{{ error }}</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="{{ profile_form.bio.id_for_label }}">Bio</label>
+      {{ profile_form.bio }}
+      {% for error in profile_form.bio.errors %}
+        <p class="field-error">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div class="profile-edit-actions">
+      <a class="btn btn-secondary" href="{% url 'accounts:profile' %}">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save changes</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const input = document.getElementById('{{ profile_form.profile_picture.id_for_label }}');
+  const image = document.getElementById('profilePicturePreviewImage');
+  const fallback = document.getElementById('profilePicturePreviewFallback');
+  let objectUrl = null;
+
+  input?.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      input.value = '';
+      window.FocusForge?.toast('Please choose an image file.', 'error');
+      return;
+    }
+
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    image.src = objectUrl;
+    image.hidden = false;
+    fallback.hidden = true;
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  });
+})();
+</script>
+{% endblock %}

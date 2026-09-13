@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications · FocusForge{% endblock %}
+{% block topbar_title %}Notifications{% endblock %}
+{% block topbar_subtitle %}Updates from your workspace{% endblock %}
+
+{% block content %}
+<div class="page-head notifications-page-head">
+  <div>
+    <h1>Notifications</h1>
+    <p>Updates from your tasks, habits, goals, focus sessions, study, and achievements.</p>
+  </div>
+  {% if notifications %}
+    <div class="notification-actions">
+      {% if unread_count %}
+        <button class="btn btn-ghost" id="markAllNotifications" type="button">Mark all read</button>
+      {% endif %}
+      <button class="btn btn-danger-ghost" id="clearAllNotifications" type="button">Clear all</button>
+    </div>
+  {% endif %}
+</div>
+
+<section class="card notifications-card">
+  <ul class="notif-list" id="notificationsList">
+    {% for notification in notifications %}
+      <li class="notif-item {% if not notification.is_read %}unread{% endif %}" data-notification-id="{{ notification.id }}">
+        <div class="notif-icon {{ notification.accent }}">
+          <i class="bi {{ notification.icon }}"></i>
+        </div>
+        <div class="notif-content">
+          <strong>{{ notification.title }}</strong>
+          <p>{{ notification.message }}</p>
+          <small>{{ notification.created_at|timesince }} ago</small>
+        </div>
+        {% if not notification.is_read %}
+          <span class="notif-unread-dot" aria-label="Unread"></span>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="notifications-empty">
+        <i class="bi bi-bell"></i>
+        <strong>You’re all caught up</strong>
+        <span>Notifications about your productivity activity will appear here.</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const button = document.getElementById('markAllNotifications');
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const response = await fetch('{% url "notifications:notification_mark_all_read" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+      });
+      if (!response.ok) throw new Error('Unable to mark notifications as read.');
+      document.querySelectorAll('.notif-item.unread').forEach(item => {
+        item.classList.remove('unread');
+        item.querySelector('.notif-unread-dot')?.remove();
+      });
+      button?.remove();
+    } catch (error) {
+      button.disabled = false;
+      window.alert(error.message);
+    }
+  });
+
+  const clearButton = document.getElementById('clearAllNotifications');
+  clearButton?.addEventListener('click', async () => {
+    if (!window.confirm('Clear all notifications? This cannot be undone.')) return;
+    clearButton.disabled = true;
+    try {
+      const response = await fetch('{% url "notifications:notification_clear_all" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+      });
+      if (!response.ok) throw new Error('Unable to clear notifications.');
+      document.getElementById('notificationsList').innerHTML = '<li class="notifications-empty"><i class="bi bi-bell"></i><strong>You’re all caught up</strong><span>Notifications about your productivity activity will appear here.</span></li>';
+      document.getElementById('markAllNotifications')?.remove();
+      clearButton.remove();
+    } catch (error) {
+      clearButton.disabled = false;
+      window.alert(error.message);
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Achievements &middot; FocusForge{% endblock %}
+{% block topbar_title %}Achievements{% endblock %}
+{% block topbar_subtitle %}Recognizing the milestones you've earned{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Achievements</h1>
+    <p>Recognizing the milestones you've earned.</p>
+  </div>
+</div>
+
+<section class="xp-card achievements-xp-card">
+  <div class="xp-top">
+    <div>
+      <div class="xp-label">Total XP</div>
+      <div class="xp-value">{{ request.user.profile.total_xp }}</div>
+    </div>
+    <div class="xp-level-badge">Level {{ request.user.profile.get_level }} · Forger</div>
+  </div>
+  <div class="xp-progress">
+    <div class="xp-progress-fill" style="width:{{ xp_level_progress }}%"></div>
+  </div>
+  <div class="xp-progress-label">{{ xp_to_next_level }} XP to Level {{ next_level }}</div>
+</section>
+
+<section class="achievement-section">
+  <h2>Unlocked <span>{{ unlocked|length }}</span></h2>
+  <div class="achievements-grid">
+    {% for item in unlocked %}
+      <article class="achievement-card">
+        <div class="achievement-icon unlocked">{{ item.achievement.icon }}</div>
+        <div class="achievement-name">{{ item.achievement.name }}</div>
+        <div class="achievement-desc">
+          {{ item.achievement.get_criteria_type_display }} · {{ item.achievement.criteria_value }}
+        </div>
+        <div class="achievement-xp">+{{ item.achievement.xp_reward }} XP</div>
+      </article>
+    {% empty %}
+      <div class="achievement-empty">
+        <i class="bi bi-trophy"></i>
+        <strong>No achievements unlocked yet</strong>
+        <span>Complete tasks, habits, focus sessions, or study sessions to earn your first one.</span>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="achievement-section">
+  <h2>Locked <span>{{ locked|length }}</span></h2>
+  <div class="achievements-grid">
+    {% for item in locked %}
+      <article class="achievement-card locked">
+        <div class="achievement-icon locked">
+          <i class="bi bi-lock-fill"></i>
+        </div>
+        <div class="achievement-name">{{ item.achievement.name }}</div>
+        <div class="achievement-desc">
+          {% if item.remaining %}
+            {{ item.remaining }} more {{ item.unit }} to unlock
+          {% else %}
+            Ready to unlock
+          {% endif %}
+        </div>
+        <div class="achievement-progress">
+          <div>
+            <span>{{ item.current }} / {{ item.achievement.criteria_value }}</span>
+            <span>{{ item.percent }}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:{{ item.percent }}%"></div>
+          </div>
+        </div>
+        <div class="achievement-xp">+{{ item.achievement.xp_reward }} XP</div>
+      </article>
+    {% empty %}
+      <div class="achievement-empty">
+        <i class="bi bi-stars"></i>
+        <strong>Everything is unlocked</strong>
+        <span>You have completed every achievement currently available.</span>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

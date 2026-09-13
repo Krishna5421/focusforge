@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Deadlines | FocusForge{% endblock %}
+{% block topbar_title %}Deadlines{% endblock %}
+{% block topbar_subtitle %}Stay ahead of what needs attention{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Deadlines</h1>
+    <p>Stay ahead of what needs attention.</p>
+  </div>
+</div>
+
+<div class="deadline-summary">
+  <div class="deadline-stat overdue">
+    <span>Overdue</span>
+    <strong>{{ overdue_count }}</strong>
+    <small>Need attention</small>
+  </div>
+  <div class="deadline-stat today">
+    <span>Today</span>
+    <strong>{{ today_count }}</strong>
+    <small>Due today</small>
+  </div>
+  <div class="deadline-stat">
+    <span>This week</span>
+    <strong>{{ week_count }}</strong>
+    <small>Coming up</small>
+  </div>
+  <div class="deadline-stat">
+    <span>Weekly completion</span>
+    <strong>{{ performance }}%</strong>
+    <small>{{ completed_week_count }} completed</small>
+  </div>
+</div>
+
+<div class="deadline-sections">
+  {% for label, items in grouped.items %}
+    <section class="card deadline-section {% if label == 'Overdue' %}is-overdue{% endif %}">
+      <div class="card-head">
+        <div class="card-title">
+          <i class="bi {% if label == 'Overdue' %}bi-exclamation-circle{% elif label == 'Today' %}bi-calendar-day{% elif label == 'Tomorrow' %}bi-sun{% else %}bi-calendar3{% endif %}"></i>
+          {{ label }}
+        </div>
+        <span class="deadline-count">{{ items|length }}</span>
+      </div>
+
+      <ul class="deadline-page-list">
+        {% for item in items %}
+          <li class="deadline-page-item">
+            <div class="deadline-page-date {% if label == 'Overdue' %}overdue{% elif label == 'Today' %}today{% endif %}">
+              <span>{{ item.date|date:'j' }}</span>
+              <small>{{ item.date|date:'M' }}</small>
+            </div>
+            <div class="deadline-page-body">
+              <strong>{{ item.title }}</strong>
+              <p>
+                <span class="deadline-kind">{{ item.type }}</span>
+                {% if item.category %} · {{ item.category }}{% endif %}
+                {% if item.description %} · {{ item.description|truncatechars:80 }}{% endif %}
+              </p>
+            </div>
+            <time>
+              {% if label == 'Overdue' %}
+                Overdue
+              {% elif label == 'Today' %}
+                Due today
+              {% else %}
+                {{ item.date|date:'D, M j' }}
+              {% endif %}
+            </time>
+          </li>
+        {% empty %}
+          <li class="deadline-page-empty">
+            <i class="bi bi-check2-circle"></i>
+            <span>Nothing here.</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

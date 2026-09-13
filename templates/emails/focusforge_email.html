@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<body style="margin:0;background:#0b0d11;font-family:Arial,sans-serif;color:#f5f6f8">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center" style="padding:32px 16px">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0"
+               style="max-width:600px;background:#12151c;border:1px solid #292f3b;border-radius:16px;overflow:hidden">
+          <tr>
+            <td style="padding:24px 30px;background:linear-gradient(135deg,#f5a524,#ff7a45);color:#17120a;font-size:22px;font-weight:bold">
+              FocusForge
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px">
+              <p style="margin:0 0 12px;color:#aeb4c0;font-size:15px">Hi {{ name }},</p>
+              <h1 style="margin:0 0 14px;font-size:23px;color:#fff">{{ heading }}</h1>
+              <p style="margin:0;color:#c9ccd4;font-size:15px;line-height:1.6">{{ message }}</p>
+              {% if action_url %}
+                <p style="margin:25px 0 0">
+                  <a href="{{ action_url }}"
+                     style="display:inline-block;background:#f5a524;color:#17120a;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:bold">
+                    Open FocusForge
+                  </a>
+                </p>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 30px;border-top:1px solid #292f3b;color:#7d8491;font-size:12px">
+              Your productivity workspace · FocusForge
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

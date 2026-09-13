@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Focus &middot; FocusForge{% endblock %}
+{% block topbar_title %}Focus{% endblock %}
+{% block topbar_subtitle %}Deep work, one session at a time{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Focus</h1>
+    <p>Deep work, one session at a time.</p>
+  </div>
+</div>
+
+<div class="focus-layout">
+  <section class="focus-main" aria-label="Pomodoro timer">
+    <div class="focus-tabs" role="tablist" aria-label="Timer mode">
+      <button class="focus-tab active" type="button" data-mode="focus">Focus</button>
+      <button class="focus-tab" type="button" data-mode="short">Short Break</button>
+      <button class="focus-tab" type="button" data-mode="long">Long Break</button>
+    </div>
+
+    <div class="focus-big-ring">
+      <svg viewBox="0 0 320 320" aria-hidden="true">
+        <circle class="focus-ring-bg" cx="160" cy="160" r="142" fill="none"></circle>
+        <circle class="focus-ring-fg" id="focusRingBig" cx="160" cy="160" r="142" fill="none"></circle>
+      </svg>
+      <div class="focus-big-center">
+        <div class="focus-big-time" id="focusTimeBig">25:00</div>
+        <div class="focus-big-state" id="focusStateBig">Ready to focus</div>
+      </div>
+    </div>
+
+    <form class="focus-task-form" id="focusForm">
+      {% csrf_token %}
+      <label for="focusTaskSelect">Task for this session <span>(optional)</span></label>
+      <select id="focusTaskSelect" name="task_id">
+        <option value="">Focus without a task</option>
+        {% for task in tasks %}<option value="{{ task.id }}">{{ task.title }}</option>{% endfor %}
+      </select>
+      <div class="focus-big-controls">
+        <button class="btn btn-primary" type="submit" id="focusStartBig"><i class="bi bi-play-fill"></i> Start</button>
+        <button class="btn btn-secondary" type="button" id="focusPauseBig" disabled><i class="bi bi-pause-fill"></i> Pause</button>
+        <button class="btn btn-secondary" type="button" id="focusResetBig">Reset</button>
+      </div>
+      <p class="focus-mode-note" id="focusModeNote"><strong>25 min</strong> focus &nbsp;&middot;&nbsp; <strong>5 min</strong> short break &nbsp;&middot;&nbsp; <strong>15 min</strong> long break</p>
+    </form>
+  </section>
+
+  <aside class="focus-side">
+    <section class="card focus-today-card">
+      <div class="card-head"><h2 class="card-title">Today</h2></div>
+      <div class="today-stats">
+        <div><span>Sessions</span><strong>{{ completed_today }}<small> / {{ daily_goal }}</small></strong></div>
+        <div><span>Focus time</span><strong class="accent-value">{{ today_focus_minutes }}m</strong></div>
+      </div>
+      <form class="daily-goal-form" id="dailyGoalForm">
+        {% csrf_token %}
+        <label for="dailyGoal">Daily session target</label>
+        <div>
+          <select id="dailyGoal" name="daily_goal">
+            {% for number in goal_numbers %}<option value="{{ number }}" {% if number == daily_goal %}selected{% endif %}>{{ number }} sessions</option>{% endfor %}
+          </select>
+          <button class="btn btn-secondary btn-small" type="submit">Save</button>
+        </div>
+        <p class="form-message" id="dailyGoalMessage">Completed sessions reset each day.</p>
+      </form>
+    </section>
+
+    <section class="card focus-history-card">
+      <div class="card-head"><h2 class="card-title">Session History</h2></div>
+      <div class="focus-history-scroll">
+        {% if recent_sessions %}
+          <ul class="focus-history">
+            {% for session in recent_sessions %}
+              <li class="focus-history-item">
+                <div class="focus-history-label">
+                  <span class="focus-history-dot {% if session.status != 'COMPLETED' %}abandoned{% endif %}"></span>
+                  <div>
+                    <strong>{% if session.task %}{{ session.task.title }}{% else %}Focus session{% endif %}</strong>
+                    <small>{% if session.status == 'COMPLETED' %}Completed{% else %}{{ session.get_status_display }}{% endif %} &middot; {{ session.started_at|date:'M j' }}</small>
+                  </div>
+                </div>
+                <span class="focus-history-dur">{{ session.display_minutes }}m</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="empty-state compact"><i class="bi bi-clock"></i><p>Your completed and stopped sessions will appear here.</p></div>
+        {% endif %}
+      </div>
+    </section>
+  </aside>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+  const modes = {
+    focus: { seconds: 25 * 60, label: 'Ready to focus', button: 'Start', note: 'Focus sessions are saved to your history.' },
+    short: { seconds: 5 * 60, label: 'Ready for a short break', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' },
+    long: { seconds: 15 * 60, label: 'Ready for a long break', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' }
+  };
+  let mode = 'focus', state = 'idle', seconds = modes.focus.seconds, sessionId = null, timer = null;
+  const time = document.getElementById('focusTimeBig');
+  const stateText = document.getElementById('focusStateBig');
+  const ring = document.getElementById('focusRingBig');
+  const form = document.getElementById('focusForm');
+  const startButton = document.getElementById('focusStartBig');
+  const pauseButton = document.getElementById('focusPauseBig');
+  const resetButton = document.getElementById('focusResetBig');
+  const taskSelect = document.getElementById('focusTaskSelect');
+  const note = document.getElementById('focusModeNote');
+  const circumference = 2 * Math.PI * 142;
+  ring.style.strokeDasharray = circumference;
+
+  function render() {
+    const minutes = Math.floor(seconds / 60);
+    const remaining = String(seconds % 60).padStart(2, '0');
+    time.textContent = `${minutes}:${remaining}`;
+    ring.style.strokeDashoffset = circumference * (1 - seconds / modes[mode].seconds);
+    stateText.textContent = state === 'running' ? (mode === 'focus' ? 'Focusing' : 'On break') : modes[mode].label;
+    stateText.classList.toggle('active', state === 'running');
+    startButton.innerHTML = `<i class="bi bi-play-fill"></i> ${state === 'paused' ? 'Resume' : modes[mode].button}`;
+    startButton.disabled = state === 'running';
+    pauseButton.disabled = state !== 'running';
+    taskSelect.disabled = mode !== 'focus' || state !== 'idle';
+    note.textContent = modes[mode].note;
+  }
+
+  async function post(url, data) {
+    const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: data });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Unable to save your session.');
+    return payload;
+  }
+
+  async function saveSession(status) {
+    if (!sessionId) return;
+    const focused = modes[mode].seconds - seconds;
+    await post(`/pomodoro/${sessionId}/update/`, new URLSearchParams({ status, focus_seconds: focused }));
+  }
+
+  function startClock() {
+    state = 'running';
+    render();
+    timer = window.setInterval(async () => {
+      seconds -= 1;
+      if (seconds <= 0) {
+        seconds = 0;
+        window.clearInterval(timer);
+        timer = null;
+        state = 'idle';
+        render();
+        if (sessionId) {
+          try { await saveSession('COMPLETED'); window.location.reload(); } catch (error) { alert(error.message); }
+        }
+      } else render();
+    }, 1000);
+  }
+
+  document.querySelectorAll('.focus-tab').forEach(button => button.addEventListener('click', () => {
+    if (state !== 'idle') return;
+    mode = button.dataset.mode;
+    seconds = modes[mode].seconds;
+    sessionId = null;
+    document.querySelectorAll('.focus-tab').forEach(tab => tab.classList.toggle('active', tab === button));
+    render();
+  }));
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (state === 'running') return;
+    try {
+      if (mode === 'focus' && !sessionId) {
+        const data = new URLSearchParams({ duration: 25, task_id: taskSelect.value });
+        const payload = await post('{% url "pomodoro:pomodoro_start" %}', data);
+        sessionId = payload.session_id;
+      }
+      if (sessionId && state === 'paused') await saveSession('RUNNING');
+      startClock();
+    } catch (error) { alert(error.message); }
+  });
+
+  pauseButton.addEventListener('click', async () => {
+    if (state !== 'running') return;
+    window.clearInterval(timer); timer = null;
+    try { await saveSession('PAUSED'); state = 'paused'; render(); }
+    catch (error) { alert(error.message); startClock(); }
+  });
+
+  resetButton.addEventListener('click', async () => {
+    if (timer) window.clearInterval(timer);
+    timer = null;
+    try {
+      if (sessionId) { await saveSession('STOPPED'); window.location.reload(); return; }
+    } catch (error) { alert(error.message); return; }
+    state = 'idle'; seconds = modes[mode].seconds; render();
+  });
+
+  document.getElementById('dailyGoalForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const message = document.getElementById('dailyGoalMessage');
+    try {
+      const data = new URLSearchParams({ daily_goal: document.getElementById('dailyGoal').value });
+      const payload = await post('{% url "pomodoro:update_daily_goal" %}', data);
+      message.textContent = `Daily target saved: ${payload.daily_goal} sessions.`;
+      document.querySelector('.today-stats small').textContent = ` / ${payload.daily_goal}`;
+    } catch (error) { message.textContent = error.message; }
+  });
+  render();
+})();
+</script>
+{% endblock %}

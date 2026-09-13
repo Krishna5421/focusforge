@@ -1,0 +1,374 @@
+{% extends 'base.html' %}
+
+{% block title %}Study Sessions &middot; FocusForge{% endblock %}
+{% block topbar_title %}Study Sessions{% endblock %}
+{% block topbar_subtitle %}Track what you learn and for how long{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Study Sessions</h1>
+    <p>Track what you learn and for how long.</p>
+  </div>
+  <button class="btn btn-primary" id="logSessionButton" type="button"><i class="bi bi-plus-lg"></i> Log Session</button>
+</div>
+
+<section class="study-stats">
+  <article class="stat-card">
+    <div class="stat-head">
+      <span class="stat-label">Total time</span>
+      <span class="stat-icon blue"><i class="bi bi-clock"></i></span>
+    </div>
+    <strong class="stat-value study-minutes" data-minutes="{{ total_minutes }}"></strong>
+    <p class="stat-sub">{{ session_count }} session{{ session_count|pluralize }}</p>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-head">
+      <span class="stat-label">Subjects</span>
+      <span class="stat-icon purple"><i class="bi bi-book"></i></span>
+    </div>
+    <strong class="stat-value">{{ subjects|length }}</strong>
+    <p class="stat-sub">Active areas</p>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-head">
+      <span class="stat-label">This week</span>
+      <span class="stat-icon amber"><i class="bi bi-bar-chart"></i></span>
+    </div>
+    <strong class="stat-value study-minutes" data-minutes="{{ week_minutes }}"></strong>
+    <p class="stat-sub">Since Monday</p>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-head">
+      <span class="stat-label">Avg session</span>
+      <span class="stat-icon green"><i class="bi bi-activity"></i></span>
+    </div>
+    <strong class="stat-value">{{ average_minutes }}m</strong>
+    <p class="stat-sub">Per session</p>
+  </article>
+</section>
+
+<div class="study-workspace-layout">
+  <section class="card study-workspace-card">
+    <div class="card-head">
+      <h2 class="card-title"><i class="bi bi-clock"></i> Study Session</h2>
+    </div>
+    <div class="study-workspace">
+      {% if active_session %}
+        <div class="study-session-subject">
+          <strong>{{ active_session.subject.name }}</strong>
+          {% if active_session.resource_name %}
+            <span><i class="bi bi-file-earmark-text"></i> {{ active_session.resource_name }}</span>
+          {% endif %}
+        </div>
+
+        {% if active_session.resource_name %}
+          <a class="btn btn-secondary btn-sm study-open-file" id="activeLocalFileButton" target="_blank" rel="noopener" hidden>
+            <i class="bi bi-box-arrow-up-right"></i> View File
+          </a>
+          <p class="form-message" id="activeLocalFileMessage" hidden></p>
+        {% endif %}
+
+        <div class="study-timer workspace-timer" id="workspaceTimer">00:00</div>
+        <p class="study-timer-label" id="completedTime"></p>
+
+        <label class="form-label">Planned minutes</label>
+        <div class="workspace-plan">{{ active_session.planned_minutes }} minutes</div>
+
+        <div class="study-timer-controls">
+          <button class="btn btn-primary" id="startStudyButton" type="button"><i class="bi bi-play-fill"></i> Start</button>
+          <button class="btn btn-secondary" id="pauseStudyButton" type="button"><i class="bi bi-pause-fill"></i> Pause</button>
+          <button class="btn btn-secondary" id="resetStudyButton" type="button">Reset</button>
+        </div>
+
+        <p class="study-session-notes">{{ active_session.notes|default:'No notes added.' }}</p>
+        <button class="btn btn-primary study-save-button" id="saveStudyButton" type="button">Save Completed Time</button>
+      {% else %}
+        <div class="study-workspace-empty">
+          <i class="bi bi-play-circle"></i>
+          <h3>Ready to study?</h3>
+          <p>Select Log Session to add a subject, notes, and a local study file.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card study-history-card">
+    <div class="card-head">
+      <h2 class="card-title">Session History</h2>
+    </div>
+    {% if sessions %}
+      <div class="study-history-scroll">
+        <ul class="study-list">
+          {% for session in sessions %}
+            <li class="study-item">
+              <div class="study-subject" style="background:{{ session.subject.color }}22;color:{{ session.subject.color }}">
+                {{ session.subject.name|first|upper }}
+              </div>
+              <div class="study-body">
+                <div class="study-name">{{ session.subject.name }}</div>
+                <div class="study-meta">
+                  {{ session.date|date:'D, M j' }}
+                  {% if session.resource_name %}
+                    <span class="study-resource"><i class="bi bi-file-earmark-text"></i> {{ session.resource_name }}</span>
+                  {% endif %}
+                  <span class="study-note">Planned {{ session.planned_display }}m · Completed {{ session.actual_display }}</span>
+                </div>
+              </div>
+              <strong class="study-duration">{{ session.duration_minutes }}m</strong>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      <div class="study-empty">
+        <i class="bi bi-journal-bookmark"></i>
+        <h3>No study sessions yet</h3>
+        <p>Your saved completed time will appear here.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<div class="modal-overlay" id="sessionModal">
+  <div class="modal study-setup-modal">
+    <div class="modal-head">
+      <h2 class="modal-title">Set Up Study Session</h2>
+      <button class="modal-close" type="button" data-close><i class="bi bi-x-lg"></i></button>
+    </div>
+    <form id="setupForm">
+      {% csrf_token %}
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="setupSubject">Subject</label>
+          <input class="form-input" id="setupSubject" name="subject_name" maxlength="100" required placeholder="Type a subject, e.g. Algorithms">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="setupMinutes">Planned minutes</label>
+          <input class="form-input planned-minutes-input" id="setupMinutes" name="planned_minutes" type="number" min="1" max="720" value="25" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="studyFile">Choose a study file <span>(optional, stored only in this browser)</span></label>
+          <input class="form-input study-file-input" id="studyFile" type="file" accept=".pdf,image/*,.txt,.md,.csv,.json,.epub,.doc,.docx,.ppt,.pptx,.mp3,.wav,.ogg,.mp4,.webm">
+          <input id="resourceName" name="resource_name" type="hidden">
+          <p class="form-message" id="fileMessage">Choose a supported file up to 25 MB. The file stays on this device.</p>
+          <a class="btn btn-secondary btn-sm" id="localFilePreview" target="_blank" rel="noopener" hidden>
+            <i class="bi bi-box-arrow-up-right"></i> View selected file
+          </a>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="setupNotes">Notes <span>(optional)</span></label>
+          <textarea class="form-textarea" id="setupNotes" name="notes" placeholder="What do you plan to study?"></textarea>
+        </div>
+        <p class="form-message" id="setupMessage"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" type="button" data-close>Cancel</button>
+        <button class="btn btn-primary" type="submit">Set Up Timer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const csrf = '{{ csrf_token }}', active = {% if active_session %}true{% else %}false{% endif %};
+  let remaining = {{ active_remaining|default:0 }},
+      planned = {{ active_session.planned_minutes|default:0 }} * 60,
+      running = {% if active_session and active_session.is_running %}true{% else %}false{% endif %},
+      timer;
+
+  const modal = document.getElementById('sessionModal'),
+        post = async (url, data) => {
+          const r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: data });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || 'Unable to save.');
+          return j;
+        };
+
+  document.getElementById('logSessionButton').onclick = () => modal.classList.add('show');
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => modal.classList.remove('show'));
+  modal.onclick = e => { if (e.target === modal) modal.classList.remove('show'); };
+
+  const file = document.getElementById('studyFile'),
+        localFilePreview = document.getElementById('localFilePreview'),
+        activeFileButton = document.getElementById('activeLocalFileButton'),
+        activeFileMessage = document.getElementById('activeLocalFileMessage'),
+        activeSessionId = {{ active_session.pk|default:'null' }};
+  let localFileUrl = null, activeFileUrl = null;
+
+  const localFileKey = id => `study-file:{{ request.user.pk }}:${id}`;
+
+  const openLocalFileDb = () => new Promise((resolve, reject) => {
+    if (!window.indexedDB) return reject(new Error('Local file storage is unavailable.'));
+    const request = indexedDB.open('focusforge-study-files', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('files');
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+  async function saveLocalStudyFile(id, selected) {
+    const db = await openLocalFileDb();
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction('files', 'readwrite');
+      transaction.objectStore('files').put({ name: selected.name, file: selected }, localFileKey(id));
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
+  }
+
+  async function deleteLocalStudyFile(id) {
+    const db = await openLocalFileDb();
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction('files', 'readwrite');
+      transaction.objectStore('files').delete(localFileKey(id));
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
+  }
+
+  async function restoreLocalStudyFile() {
+    if (!activeSessionId || !activeFileButton) return;
+    try {
+      const db = await openLocalFileDb(),
+            record = await new Promise((resolve, reject) => {
+              const request = db.transaction('files', 'readonly').objectStore('files').get(localFileKey(activeSessionId));
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => reject(request.error);
+            });
+      db.close();
+      if (record?.file && record.name === '{{ active_session.resource_name|escapejs }}') {
+        activeFileUrl = URL.createObjectURL(record.file);
+        activeFileButton.href = activeFileUrl;
+        activeFileButton.hidden = false;
+        return;
+      }
+    } catch (error) {}
+    if (activeFileMessage) {
+      activeFileMessage.textContent = 'This local file is not available in this browser. Select it again to view it.';
+      activeFileMessage.hidden = false;
+    }
+  }
+  restoreLocalStudyFile();
+
+  file.onchange = () => {
+    const selected = file.files[0];
+    if (localFileUrl) { URL.revokeObjectURL(localFileUrl); localFileUrl = null; }
+    document.getElementById('resourceName').value = selected?.name || '';
+    if (!selected) {
+      localFilePreview.hidden = true;
+      document.getElementById('fileMessage').textContent = 'Choose a supported file up to 25 MB.';
+      return;
+    }
+    const supported = /\.(pdf|jpe?g|png|gif|webp|txt|md|csv|json|epub|docx?|pptx?|mp3|wav|ogg|mp4|webm)$/i.test(selected.name);
+    if (!supported) {
+      file.value = '';
+      document.getElementById('resourceName').value = '';
+      localFilePreview.hidden = true;
+      document.getElementById('fileMessage').textContent = 'That file type is not supported. Choose a PDF, image, text, document, audio, or video file.';
+      return;
+    }
+    if (selected.size > 25 * 1024 * 1024) {
+      file.value = '';
+      document.getElementById('resourceName').value = '';
+      localFilePreview.hidden = true;
+      document.getElementById('fileMessage').textContent = 'This file is larger than the 25 MB limit.';
+      return;
+    }
+    localFileUrl = URL.createObjectURL(selected);
+    localFilePreview.href = localFileUrl;
+    localFilePreview.hidden = false;
+    document.getElementById('fileMessage').textContent = `${selected.name} selected. You can view it now, and it will be attached when you set up the timer.`;
+  };
+
+  window.addEventListener('beforeunload', () => {
+    if (localFileUrl) URL.revokeObjectURL(localFileUrl);
+    if (activeFileUrl) URL.revokeObjectURL(activeFileUrl);
+  });
+
+  document.getElementById('setupForm').onsubmit = async e => {
+    e.preventDefault();
+    const selectedFile = file.files[0];
+    try {
+      const payload = await post('{% url "study:active_session_setup" %}', new FormData(e.target));
+      try {
+        if (selectedFile) await saveLocalStudyFile(payload.id, selectedFile);
+        else await deleteLocalStudyFile(payload.id);
+      } catch (storageError) {
+        window.FocusForge?.toast('The session was saved, but this browser could not keep the local file.', 'error');
+      }
+      e.target.reset();
+      if (localFileUrl) URL.revokeObjectURL(localFileUrl);
+      location.reload();
+    } catch (err) {
+      document.getElementById('setupMessage').textContent = err.message;
+    }
+  };
+
+  document.querySelectorAll('.study-minutes').forEach(x => {
+    const n = Number(x.dataset.minutes);
+    x.textContent = n >= 60 ? `${Math.floor(n / 60)}h ${n % 60}m` : `${n}m`;
+  });
+
+  if (!active) return;
+
+  const display = () => {
+    document.getElementById('workspaceTimer').textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+    document.getElementById('completedTime').textContent = `${Math.floor((planned - remaining) / 60)}m completed of ${Math.floor(planned / 60)}m`;
+    document.getElementById('startStudyButton').disabled = running;
+    document.getElementById('pauseStudyButton').disabled = !running;
+  };
+
+  const tick = () => {
+    remaining = Math.max(0, remaining - 1);
+    display();
+    if (!remaining) {
+      clearInterval(timer);
+      running = false;
+      display();
+    }
+  };
+
+  const begin = () => {
+    if (running || remaining <= 0) return;
+    post('{% url "study:active_session_timer" "start" %}', new URLSearchParams()).then(() => {
+      running = true;
+      display();
+      timer = setInterval(tick, 1000);
+    });
+  };
+
+  const pause = () => {
+    if (!running) return;
+    clearInterval(timer);
+    post('{% url "study:active_session_timer" "pause" %}', new URLSearchParams()).then(j => {
+      remaining = j.remaining_seconds;
+      running = false;
+      display();
+    });
+  };
+
+  document.getElementById('startStudyButton').onclick = begin;
+  document.getElementById('pauseStudyButton').onclick = pause;
+  document.getElementById('resetStudyButton').onclick = () => {
+    if (confirm('Discard this study session?'))
+      post('{% url "study:active_session_save" %}', new URLSearchParams({ discard: 1 })).then(() => location.reload());
+  };
+  document.getElementById('saveStudyButton').onclick = () => {
+    post('{% url "study:active_session_save" %}', new URLSearchParams())
+      .then(() => location.reload())
+      .catch(e => document.getElementById('completedTime').textContent = e.message);
+  };
+
+  display();
+  if (running) timer = setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

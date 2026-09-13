@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics &middot; FocusForge{% endblock %}
+{% block topbar_title %}Analytics{% endblock %}
+{% block topbar_subtitle %}Understand how your productivity changes over time{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Analytics</h1>
+    <p>Understand how your productivity changes over time.</p>
+  </div>
+  <div class="analytics-filters" role="group" aria-label="Analytics period">
+    <button class="filter-chip active" data-period="week" type="button">Week</button>
+    <button class="filter-chip" data-period="month" type="button">Month</button>
+    <button class="filter-chip" data-period="quarter" type="button">Quarter</button>
+  </div>
+</div>
+
+<div class="analytics-grid">
+  <section class="card full">
+    <div class="card-head">
+      <h2 class="card-title">Focus Time Over Time</h2>
+    </div>
+    <div class="analytics-chart analytics-chart-wide">
+      <canvas id="focusChart"></canvas>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2 class="card-title">Tasks Completed</h2>
+    </div>
+    <div class="analytics-chart">
+      <canvas id="tasksChart"></canvas>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2 class="card-title">Habit Consistency</h2>
+    </div>
+    <div class="analytics-chart">
+      <canvas id="habitsChart"></canvas>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2 class="card-title">Study Time by Subject</h2>
+    </div>
+    <div class="analytics-chart">
+      <canvas id="studyChart"></canvas>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2 class="card-title">Goal Progress</h2>
+    </div>
+    <div class="analytics-chart">
+      <canvas id="goalsChart"></canvas>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+  const charts = {}, colors = {
+    accent: '#f5a524',
+    blue: '#60a5fa',
+    green: '#34d399',
+    purple: '#a78bfa',
+    muted: '#8a8f9c',
+    grid: 'rgba(138,143,156,.16)'
+  };
+
+  const common = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 650, easing: 'easeOutQuart' },
+    plugins: {
+      legend: { labels: { color: colors.muted, boxWidth: 10, usePointStyle: true, font: { size: 12 } } },
+      tooltip: {
+        backgroundColor: '#171a21',
+        titleColor: '#f5f6f8',
+        bodyColor: '#c9ccd4',
+        borderColor: '#323845',
+        borderWidth: 1,
+        padding: 10
+      }
+    },
+    scales: {
+      x: { ticks: { color: colors.muted, maxTicksLimit: 8, font: { size: 11 } }, grid: { display: false } },
+      y: { beginAtZero: true, ticks: { color: colors.muted, font: { size: 11 } }, grid: { color: colors.grid } }
+    }
+  };
+
+  const emptyPlugin = {
+    id: 'emptyState',
+    afterDraw(chart) {
+      if (!chart.data.datasets.some(dataset => dataset.data.some(value => value > 0))) {
+        const { ctx, chartArea } = chart;
+        ctx.save();
+        ctx.fillStyle = colors.muted;
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(
+          'No data for this period',
+          (chartArea.left + chartArea.right) / 2,
+          (chartArea.top + chartArea.bottom) / 2
+        );
+        ctx.restore();
+      }
+    }
+  };
+
+  function chart(id, config) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), config);
+  }
+
+  function lineConfig(labels, datasets, percent = false) {
+    return {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        ...common,
+        interaction: { intersect: false, mode: 'index' },
+        scales: {
+          ...common.scales,
+          y: {
+            ...common.scales.y,
+            max: percent ? 100 : undefined,
+            ticks: {
+              ...common.scales.y.ticks,
+              callback: value => percent ? `${value}%` : `${value}m`
+            }
+          }
+        }
+      },
+      plugins: [emptyPlugin]
+    };
+  }
+
+  function render(data) {
+    chart('focusChart', lineConfig(data.labels, [
+      {
+        label: 'Actual Focus Time',
+        data: data.focus.actual,
+        borderColor: colors.accent,
+        backgroundColor: 'rgba(245,165,36,.12)',
+        fill: true,
+        tension: .38,
+        pointRadius: 3,
+        pointHoverRadius: 5
+      },
+      {
+        label: 'Planned Focus Time',
+        data: data.focus.planned,
+        borderColor: colors.blue,
+        borderDash: [6, 5],
+        tension: .38,
+        pointRadius: 3,
+        pointHoverRadius: 5
+      }
+    ], false));
+
+    chart('tasksChart', {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: 'Completed tasks',
+          data: data.tasks,
+          backgroundColor: 'rgba(96,165,250,.85)',
+          borderRadius: 5,
+          borderSkipped: false
+        }]
+      },
+      options: { ...common, plugins: { ...common.plugins, legend: { display: false } } },
+      plugins: [emptyPlugin]
+    });
+
+    chart('habitsChart', lineConfig(data.labels, [{
+      label: 'Habit Completion %',
+      data: data.habits,
+      borderColor: colors.green,
+      backgroundColor: 'rgba(52,211,153,.12)',
+      fill: true,
+      tension: .38,
+      pointRadius: 3,
+      pointHoverRadius: 5
+    }], true));
+
+    chart('studyChart', {
+      type: 'doughnut',
+      data: {
+        labels: data.study.labels,
+        datasets: [{
+          data: data.study.data,
+          backgroundColor: [colors.accent, colors.purple, colors.blue, colors.green, '#f472b6', '#fbbf24'],
+          borderWidth: 0,
+          hoverOffset: 7
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 650, easing: 'easeOutQuart' },
+        cutout: '66%',
+        plugins: {
+          legend: { position: 'right', labels: { color: colors.muted, boxWidth: 10, padding: 12, font: { size: 12 } } },
+          tooltip: { callbacks: { label: item => `${item.label}: ${item.raw}m` } }
+        }
+      },
+      plugins: [emptyPlugin]
+    });
+
+    chart('goalsChart', {
+      type: 'bar',
+      data: {
+        labels: data.goals.labels,
+        datasets: [{
+          label: 'Progress %',
+          data: data.goals.data,
+          backgroundColor: 'rgba(167,139,250,.85)',
+          borderRadius: 5,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        ...common,
+        indexAxis: 'y',
+        plugins: { ...common.plugins, legend: { display: false } },
+        scales: {
+          x: {
+            ...common.scales.x,
+            max: 100,
+            ticks: { ...common.scales.x.ticks, callback: value => `${value}%` }
+          },
+          y: { ...common.scales.y, grid: { display: false } }
+        }
+      },
+      plugins: [emptyPlugin]
+    });
+  }
+
+  async function load(period) {
+    document.querySelectorAll('.filter-chip').forEach(button =>
+      button.classList.toggle('active', button.dataset.period === period)
+    );
+    try {
+      const response = await fetch(`{% url 'core:analytics_data' %}?period=${period}`);
+      if (!response.ok) throw new Error();
+      render(await response.json());
+    } catch {
+      Object.values(charts).forEach(chart => chart.destroy());
+    }
+  }
+
+  document.querySelectorAll('.filter-chip').forEach(button =>
+    button.addEventListener('click', () => load(button.dataset.period))
+  );
+  load('week');
+})();
+</script>
+{% endblock %}

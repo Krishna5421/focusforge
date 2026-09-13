@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block title %}Goals · FocusForge{% endblock %}
+{% block topbar_title %}Goals{% endblock %}
+{% block topbar_subtitle %}Long-term outcomes broken into milestones{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Goals</h2>
+    <p>Long-term outcomes broken into milestones.</p>
+  </div>
+  <button class="btn btn-primary" id="newGoalButton"><i class="bi bi-plus-lg"></i>New Goal</button>
+</div>
+
+<div id="goalsList">
+  {% for goal in goals %}
+    <article class="goal-card {% if goal.status == 'COMPLETED' %}goal-completed{% endif %}"
+              data-goal-id="{{ goal.pk }}"
+              data-title="{{ goal.title|escape }}"
+              data-deadline="{{ goal.deadline|date:'Y-m-d' }}"
+              data-milestones="{% for milestone in goal.milestones.all %}{{ milestone.title }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}">
+      <div class="goal-card-head">
+        <div>
+          <div class="goal-card-title">{{ goal.title }}</div>
+          <div class="goal-card-meta">
+            <span><i class="bi bi-calendar3"></i> {{ goal.deadline|date:'M j, Y' }}</span>
+            <span>{{ goal.deadline|timeuntil }} left</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="goal-card-status {% if goal.status == 'COMPLETED' %}done{% endif %}">
+            {% if goal.status == 'COMPLETED' %}Completed{% else %}In progress{% endif %}
+          </span>
+          <button class="task-action-btn edit-goal" type="button" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="task-action-btn delete-goal" type="button" title="Delete"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="progress-bar" style="flex:1">
+          <div class="progress-fill {% if goal.status == 'COMPLETED' %}green{% endif %}" style="width:{{ goal.completion_percentage }}%"></div>
+        </div>
+        <strong class="goal-pct">{{ goal.completion_percentage }}%</strong>
+      </div>
+
+      <div class="milestones">
+        {% for milestone in goal.milestones.all %}
+          <div class="milestone {% if milestone.is_completed %}done{% endif %}" data-milestone-id="{{ milestone.pk }}">
+            <button class="milestone-check {% if milestone.is_completed %}done{% endif %}" type="button">
+              <i class="bi bi-check"></i>
+            </button>
+            <span class="milestone-title">{{ milestone.title }}</span>
+          </div>
+        {% empty %}
+          <div class="empty" style="padding:12px 0">Add milestones to track this goal.</div>
+        {% endfor %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty" style="padding:64px 24px">
+      <h4>No goals yet</h4>
+      <p>Create your first goal, add milestones, and track your progress here.</p>
+      <button class="btn btn-primary" type="button" id="emptyNewGoalButton">
+        <i class="bi bi-plus-lg"></i>Create your first goal
+      </button>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="modal-overlay" id="goalModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="goalModalTitle">New Goal</div>
+      <button class="icon-btn" type="button" id="closeGoalModal"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <form id="goalForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Goal name</label>
+          <input class="form-input" name="title" required placeholder="What do you want to achieve?">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline</label>
+          <input class="form-input" name="deadline" required type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Milestones (one per line)</label>
+          <textarea class="form-textarea" name="milestones" rows="5" placeholder="Define measurable steps"></textarea>
+        </div>
+        <div class="form-error" id="goalFormError" hidden></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" type="button" id="cancelGoalModal">Cancel</button>
+        <button class="btn btn-primary" type="submit" id="saveGoalButton">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteGoalModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Delete this goal?</div>
+      <button class="icon-btn" type="button" id="closeDeleteGoalModal"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <p id="deleteGoalMessage" style="color:var(--text-1)"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" type="button" id="cancelDeleteGoal">Cancel</button>
+      <button class="btn btn-danger-ghost" type="button" id="confirmDeleteGoal" style="background:var(--danger);color:#fff;border-color:var(--danger)">Confirm</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const goalCsrf = '{{ csrf_token }}',
+      goalsList = document.getElementById('goalsList'),
+      goalModal = document.getElementById('goalModal'),
+      goalForm = document.getElementById('goalForm'),
+      deleteGoalModal = document.getElementById('deleteGoalModal');
+let editingGoalId = null, deleteGoalId = null, deleteGoalCard = null;
+
+function openGoalModal(card) {
+  editingGoalId = card?.dataset.goalId || null;
+  goalForm.reset();
+  document.getElementById('goalFormError').hidden = true;
+  document.getElementById('goalModalTitle').textContent = editingGoalId ? 'Edit Goal' : 'New Goal';
+  document.getElementById('saveGoalButton').textContent = editingGoalId ? 'Save changes' : 'Create';
+  if (card) {
+    goalForm.title.value = card.dataset.title;
+    goalForm.deadline.value = card.dataset.deadline;
+    goalForm.milestones.value = card.dataset.milestones;
+  } else {
+    goalForm.deadline.value = '{% now "Y-m-d" %}';
+  }
+  goalModal.classList.add('show');
+  goalForm.title.focus();
+}
+
+function closeGoalModal() { goalModal.classList.remove('show'); }
+
+document.getElementById('newGoalButton').onclick = () => openGoalModal();
+document.getElementById('emptyNewGoalButton')?.addEventListener('click', () => openGoalModal());
+document.getElementById('closeGoalModal').onclick = closeGoalModal;
+document.getElementById('cancelGoalModal').onclick = closeGoalModal;
+goalModal.onclick = e => { if (e.target === goalModal) closeGoalModal(); };
+
+goalForm.onsubmit = async e => {
+  e.preventDefault();
+  const url = editingGoalId ? `/goals/ajax/${editingGoalId}/update/` : '{% url "goals:ajax_goal_create" %}',
+        r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': goalCsrf }, body: new FormData(goalForm) }),
+        data = await r.json();
+  if (!r.ok) {
+    const error = document.getElementById('goalFormError');
+    error.textContent = data.error || 'Could not save goal.';
+    error.hidden = false;
+    return;
+  }
+  location.reload();
+};
+
+function closeDeleteGoalModal() {
+  deleteGoalModal.classList.remove('show');
+  deleteGoalId = null;
+  deleteGoalCard = null;
+}
+document.getElementById('closeDeleteGoalModal').onclick = closeDeleteGoalModal;
+document.getElementById('cancelDeleteGoal').onclick = closeDeleteGoalModal;
+deleteGoalModal.onclick = e => { if (e.target === deleteGoalModal) closeDeleteGoalModal(); };
+
+goalsList.addEventListener('click', async e => {
+  const card = e.target.closest('.goal-card');
+  if (!card) return;
+  if (e.target.closest('.edit-goal')) return openGoalModal(card);
+  if (e.target.closest('.delete-goal')) {
+    deleteGoalId = card.dataset.goalId;
+    deleteGoalCard = card;
+    document.getElementById('deleteGoalMessage').textContent = `"${card.dataset.title}" and its milestones will be permanently removed.`;
+    deleteGoalModal.classList.add('show');
+    return;
+  }
+  const milestone = e.target.closest('.milestone');
+  if (!milestone) return;
+  const r = await fetch(`/goals/ajax/milestone/${milestone.dataset.milestoneId}/toggle/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': goalCsrf }
+  });
+  if (!r.ok) {
+    window.FocusForge?.toast('Could not update milestone.', 'error');
+    return;
+  }
+  const data = await r.json();
+  milestone.classList.toggle('done', data.completed);
+  milestone.querySelector('.milestone-check').classList.toggle('done', data.completed);
+  const fill = card.querySelector('.progress-fill');
+  fill.style.width = `${data.goal_progress}%`;
+  fill.classList.toggle('green', data.goal_status === 'COMPLETED');
+  card.querySelector('.goal-pct').textContent = `${data.goal_progress}%`;
+  const status = card.querySelector('.goal-card-status');
+  status.textContent = data.goal_status === 'COMPLETED' ? 'Completed' : 'In progress';
+  status.classList.toggle('done', data.goal_status === 'COMPLETED');
+  if (data.goal_status === 'COMPLETED') {
+    card.classList.add('goal-completed');
+    goalsList.append(card);
+    window.FocusForge?.toast('Goal completed!', 'success');
+  } else {
+    card.classList.remove('goal-completed');
+    window.FocusForge?.toast(data.completed ? 'Milestone completed' : 'Milestone reopened', 'info');
+  }
+  window.FocusForge?.refreshShell();
+});
+
+document.getElementById('confirmDeleteGoal').onclick = async () => {
+  if (!deleteGoalId) return;
+  const r = await fetch(`/goals/ajax/${deleteGoalId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': goalCsrf } });
+  if (r.ok) {
+    deleteGoalCard.remove();
+    closeDeleteGoalModal();
+  }
+};
+</script>
+{% endblock %}

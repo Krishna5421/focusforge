@@ -1,0 +1,603 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard · FocusForge{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+{% block topbar_subtitle %}Your productivity at a glance{% endblock %}
+
+{% block content %}
+<div class="welcome">
+  <div>
+    <h1>{{ greeting }}, {{ request.user.first_name|default:request.user.username }}</h1>
+    <p>Here's how your productivity is looking today.</p>
+  </div>
+  <div class="welcome-date">
+    <i class="bi bi-calendar3"></i>
+    <span>{% now "l, F j" %}</span>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card" style="--card-accent:var(--info);--card-accent-soft:var(--info-soft)">
+    <div class="stat-head">
+      <span class="stat-label">Today's Tasks</span>
+      <span class="stat-icon"><i class="bi bi-check2-square"></i></span>
+    </div>
+    <div class="stat-value" id="dashboardTaskStat">{{ completed_today_count }}/{{ todays_tasks_count }}</div>
+    <div class="stat-sub" id="dashboardTaskRemaining">{{ todays_tasks_count|add:'-'|add:completed_today_count }} remaining</div>
+  </div>
+
+  <div class="stat-card" style="--card-accent:var(--pink);--card-accent-soft:rgba(236,72,153,.12)">
+    <div class="stat-head">
+      <span class="stat-label">Habit Progress</span>
+      <span class="stat-icon"><i class="bi bi-heart"></i></span>
+    </div>
+    <div class="stat-value" id="dashboardHabitStat">{{ completed_habits_count }}/{{ todays_habits|length }}</div>
+    <div class="stat-sub" id="dashboardHabitRemaining">{{ todays_habits|length|add:'-'|add:completed_habits_count }} to go</div>
+  </div>
+
+  <div class="stat-card" style="--card-accent:var(--purple);--card-accent-soft:var(--purple-soft)">
+    <div class="stat-head">
+      <span class="stat-label">Active Goals</span>
+      <span class="stat-icon"><i class="bi bi-bullseye"></i></span>
+    </div>
+    <div class="stat-value">{{ active_goals_count }}</div>
+    <div class="stat-sub">In progress</div>
+  </div>
+
+  <div class="stat-card" style="--card-accent:var(--accent);--card-accent-soft:var(--accent-soft)">
+    <div class="stat-head">
+      <span class="stat-label">Focus Time</span>
+      <span class="stat-icon"><i class="bi bi-clock"></i></span>
+    </div>
+    <div class="stat-value">{{ today_focus_minutes }}m</div>
+    <div class="stat-sub">{{ pomodoro_sessions_today }} sessions today</div>
+  </div>
+
+  <div class="stat-card" style="--card-accent:var(--accent-2);--card-accent-soft:var(--danger-soft)">
+    <div class="stat-head">
+      <span class="stat-label">Current XP</span>
+      <span class="stat-icon"><i class="bi bi-star"></i></span>
+    </div>
+    <div class="stat-value">{{ profile.total_xp }}</div>
+    <div class="stat-sub">Level {{ profile.get_level }}</div>
+  </div>
+
+  <div class="stat-card" style="--card-accent:var(--danger);--card-accent-soft:var(--danger-soft)">
+    <div class="stat-head">
+      <span class="stat-label">Current Streak</span>
+      <span class="stat-icon"><i class="bi bi-fire"></i></span>
+    </div>
+    <div class="stat-value">{{ profile.current_streak }}d</div>
+    <div class="stat-sub">Personal best: {{ profile.longest_streak }}d</div>
+  </div>
+</div>
+
+<div class="dash-grid">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-check2-square"></i>Today's Tasks</div>
+      <a class="card-action" href="{% url 'tasks:task_list' %}">View all →</a>
+    </div>
+    <div class="card-body flush">
+      <ul class="task-list">
+        {% for task in todays_tasks %}
+          <li class="task-item {% if task.status == 'COMPLETED' %}completed{% endif %}">
+            <form class="dashboard-task-toggle" data-url="{% url 'tasks:ajax_toggle_status' task.pk %}">
+              {% csrf_token %}
+              <button class="task-check {% if task.status == 'COMPLETED' %}done{% endif %}" type="submit"
+                      aria-label="Toggle {{ task.title }}">
+                <i class="bi bi-check"></i>
+              </button>
+            </form>
+            <div class="task-body">
+              <div class="task-title">{{ task.title }}</div>
+              <div class="task-meta">
+                {% if task.category %}<span class="tag cat">{{ task.category.name }}</span>{% endif %}
+                <span class="tag priority-{{ task.priority|lower|cut:'ium'|cut:'low' }}">{{ task.get_priority_display }}</span>
+              </div>
+            </div>
+            {% if task.due_date %}<span class="task-due">{{ task.due_date|date:'g:i A' }}</span>{% endif %}
+          </li>
+        {% empty %}
+          <li class="dashboard-empty-row">
+            <i class="bi bi-calendar-check"></i>
+            <strong>No tasks due today</strong>
+            <span>Enjoy the clear schedule.</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-stopwatch"></i>Focus Session</div>
+      <a class="card-action" href="{% url 'pomodoro:pomodoro_page' %}">Open →</a>
+    </div>
+    <div class="focus-widget">
+      <div class="focus-ring">
+        <svg viewBox="0 0 200 200">
+          <defs>
+            <linearGradient id="focusGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f5a524"/>
+              <stop offset="100%" stop-color="#ff7a45"/>
+            </linearGradient>
+          </defs>
+          <circle class="focus-ring-bg" cx="100" cy="100" r="90"/>
+          <circle class="focus-ring-fg" cx="100" cy="100" r="90" stroke-dasharray="565.48"
+                  stroke-dashoffset="{{ goal_percent|default:0 }}"/>
+        </svg>
+        <div class="focus-center">
+          <div class="focus-time">25:00</div>
+          <div class="focus-state">Ready to focus</div>
+        </div>
+      </div>
+      <a class="btn btn-primary" href="{% url 'pomodoro:pomodoro_page' %}"><i class="bi bi-play-fill"></i> Start Session</a>
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-heart"></i>Habit Overview</div>
+      <a class="card-action" href="{% url 'habits:habit_list' %}">Manage →</a>
+    </div>
+    <div class="card-body flush">
+      <ul class="habit-list">
+        {% for item in todays_habits %}
+          <li class="habit-item">
+            <div class="habit-icon"><i class="bi {{ item.habit.icon }}"></i></div>
+            <div class="habit-body">
+              <div class="habit-name">{{ item.habit.name }}</div>
+              <div class="habit-streak">
+                <span class="fire">🔥 {{ item.habit.current_streak }}d streak</span>
+                <span>Best: {{ item.habit.longest_streak }}d</span>
+              </div>
+              <div class="habit-week" aria-label="Last seven days">
+                {% for day in item.week %}
+                  <span class="habit-week-day {% if day.completed %}done{% endif %} {% if day.is_today %}today{% endif %}"
+                        title="{{ day.date|date:'D, M j' }}"></span>
+                {% endfor %}
+              </div>
+            </div>
+            <form class="dashboard-habit-toggle" data-url="{% url 'habits:ajax_toggle_habit' item.habit.pk %}">
+              {% csrf_token %}
+              <button class="habit-check {% if item.completed_today %}done{% endif %}" type="submit"
+                      aria-label="Mark {{ item.habit.name }} complete">
+                <i class="bi bi-check"></i>
+              </button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="dashboard-empty-row compact">
+            <i class="bi bi-heart"></i>
+            <strong>No active habits</strong>
+            <span>Create a habit to see your seven-day activity.</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-bullseye"></i>Goal Progress</div>
+      <a class="card-action" href="{% url 'goals:goal_list' %}">View all →</a>
+    </div>
+    <div class="card-body flush">
+      <ul class="goal-list">
+        {% for item in goal_items %}
+          <li class="goal-item">
+            <a href="{% url 'goals:goal_detail' item.goal.pk %}">
+              <div class="goal-head">
+                <span class="goal-name">{{ item.goal.title }}</span>
+                <span class="goal-pct">{{ item.goal.completion_percentage }}%</span>
+              </div>
+              <div class="goal-meta">
+                <span>{{ item.goal.milestone_progress }} milestones</span>
+                <span>
+                  {% if item.days_left < 0 %}
+                    {{ item.overdue_days }} day{{ item.overdue_days|pluralize }} overdue
+                  {% elif item.days_left == 0 %}
+                    Due today
+                  {% elif item.days_left == 1 %}
+                    1 day left
+                  {% else %}
+                    {{ item.days_left }} days left
+                  {% endif %}
+                </span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width:{{ item.goal.completion_percentage }}%"></div>
+              </div>
+            </a>
+          </li>
+        {% empty %}
+          <li class="dashboard-empty-row compact">
+            <i class="bi bi-bullseye"></i>
+            <strong>No active goals</strong>
+            <span>Create a goal to track progress here.</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-book"></i>Recent Study Sessions</div>
+      <a class="card-action" href="{% url 'study:study_dashboard' %}">View all →</a>
+    </div>
+    <div class="card-body flush">
+      <ul class="study-list">
+        {% for session in recent_study_sessions %}
+          <li class="study-item">
+            <div class="study-subject" style="background:{{ session.subject.color }}22;color:{{ session.subject.color }}">
+              {{ session.subject.name|first|upper }}
+            </div>
+            <div class="study-body">
+              <div class="study-name">{{ session.subject.name }}</div>
+              <div class="study-meta">
+                {{ session.date|date:'M j' }}{% if session.notes %} · {{ session.notes|truncatechars:30 }}{% endif %}
+              </div>
+            </div>
+            <div class="study-duration">{{ session.duration_minutes }}m</div>
+          </li>
+        {% empty %}
+          <li class="dashboard-empty-row compact">
+            <i class="bi bi-book"></i>
+            <strong>No study sessions yet</strong>
+            <span>Your completed study sessions will appear here.</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-calendar-event"></i>Upcoming Deadlines</div>
+      <a class="card-action" href="{% url 'core:deadlines' %}">View all →</a>
+    </div>
+    <div class="card-body flush">
+      <ul class="deadline-list">
+        {% for item in deadlines_preview %}
+          <li class="deadline-item {% if item.days < 0 %}overdue{% elif item.days == 0 %}today{% endif %}">
+            <div class="deadline-date">
+              <span class="day">{{ item.date|date:'j' }}</span>
+              <span class="mon">{{ item.date|date:'M' }}</span>
+            </div>
+            <div class="deadline-body">
+              <div class="deadline-title">{{ item.title }}</div>
+              <div class="deadline-type">
+                {{ item.type }} ·
+                {% if item.days < 0 %}
+                  {{ item.days|cut:'-' }} day{{ item.days|cut:'-'|pluralize }} overdue
+                {% elif item.days == 0 %}
+                  Due today
+                {% elif item.days == 1 %}
+                  Due tomorrow
+                {% else %}
+                  {{ item.days }} days left
+                {% endif %}
+              </div>
+            </div>
+          </li>
+        {% empty %}
+          <li class="dashboard-empty-row compact">
+            <i class="bi bi-calendar-check"></i>
+            <strong>No upcoming deadlines</strong>
+            <span>Your scheduled tasks and goals will appear here.</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid-2">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-bar-chart"></i>Productivity This Week</div>
+      <a class="card-action" href="{% url 'core:analytics_page' %}">Deep dive →</a>
+    </div>
+    <div class="dashboard-productivity-chart">
+      <canvas id="productivityWeekChart"></canvas>
+    </div>
+    <div class="dashboard-chart-summary">
+      <span>Tasks: <strong>{{ week_tasks_completed }}</strong></span>
+      <span>Focus: <strong>{{ week_focus_minutes }}m</strong></span>
+      <span>Habits: <strong>{{ week_habits_completed }}</strong></span>
+    </div>
+  </div>
+
+  <div class="dashboard-side-stack">
+    <div class="xp-card">
+      <div class="xp-top">
+        <div>
+          <div class="xp-label">Total XP</div>
+          <div class="xp-value" id="dashboardXpValue">{{ profile.total_xp }}</div>
+        </div>
+        <div class="xp-level-badge" id="dashboardLevelBadge">Level {{ profile.get_level }}</div>
+      </div>
+      <div class="xp-progress">
+        <div class="xp-progress-fill" id="dashboardXpProgress" style="width:{{ xp_level_progress }}%"></div>
+      </div>
+      <div class="xp-progress-label" id="dashboardXpLabel">{{ xp_to_next_level }} XP to Level {{ profile.get_level|add:1 }}</div>
+    </div>
+
+    <div class="card dashboard-ai-shortcut">
+      <div class="card-head">
+        <div class="card-title"><i class="bi bi-stars"></i> AI Assistant</div>
+        <a class="card-action" href="{% url 'assistant:assistant_page' %}">Open →</a>
+      </div>
+      <div class="dashboard-ai-body">
+        <p>Need help planning your day?</p>
+        <a href="{% url 'assistant:assistant_page' %}?prompt=How%20should%20I%20prioritize%20my%20tasks%20today%3F">How should I prioritize my tasks today?</a>
+        <a href="{% url 'assistant:assistant_page' %}?prompt=Help%20me%20plan%20my%20study%20session.">Help me plan my study session.</a>
+        <a href="{% url 'assistant:assistant_page' %}?prompt=How%20can%20I%20improve%20my%20focus%3F">How can I improve my focus?</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="dashboardEndFocusModal" aria-hidden="true">
+  <div class="modal dashboard-end-modal" role="dialog" aria-modal="true" aria-labelledby="dashboardEndFocusTitle">
+    <div class="modal-head">
+      <h2 class="modal-title" id="dashboardEndFocusTitle">End this session?</h2>
+      <button class="modal-close" type="button" id="dashboardEndFocusClose" aria-label="Close">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Progress will not be saved as a completed session.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" id="dashboardEndFocusCancel" type="button">Cancel</button>
+      <button class="btn btn-danger" id="dashboardEndFocusConfirm" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="xp-reward-toast" id="dashboardXpReward" role="status" aria-live="polite"></div>
+{% endblock %}
+
+{% block extra_js %}
+{{ productivity_chart|json_script:"productivity-chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+  const canvas = document.getElementById('productivityWeekChart');
+  const data = JSON.parse(document.getElementById('productivity-chart-data').textContent);
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: [
+        { label: 'Tasks', data: data.tasks, backgroundColor: 'rgba(96,165,250,.86)', borderRadius: 5, borderSkipped: false, yAxisID: 'count' },
+        { label: 'Habit check-ins', data: data.habits, backgroundColor: 'rgba(52,211,153,.78)', borderRadius: 5, borderSkipped: false, yAxisID: 'count' },
+        { label: 'Focus minutes', data: data.focus, type: 'line', borderColor: '#f5a524', backgroundColor: 'rgba(245,165,36,.12)', fill: true, tension: .36, pointRadius: 3, pointHoverRadius: 5, yAxisID: 'minutes' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 650, easing: 'easeOutQuart' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#8a8f9c', boxWidth: 10, usePointStyle: true, font: { size: 11 } } },
+        tooltip: { backgroundColor: '#171a21', titleColor: '#f5f6f8', bodyColor: '#c9ccd4', borderColor: '#323845', borderWidth: 1 }
+      },
+      scales: {
+        x: { stacked: false, ticks: { color: '#8a8f9c', font: { size: 11 } }, grid: { display: false } },
+        count: { beginAtZero: true, position: 'left', ticks: { color: '#8a8f9c', precision: 0 }, grid: { color: 'rgba(138,143,156,.14)' } },
+        minutes: { beginAtZero: true, position: 'right', ticks: { color: '#f5a524', callback: value => value + 'm' }, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+})();
+</script>
+<script>
+(() => {
+  const csrf = '{{ csrf_token }}';
+  const reward = document.getElementById('dashboardXpReward');
+  let lastXp = Number(document.getElementById('dashboardXpValue')?.textContent || 0);
+
+  const post = async (url, form) => {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+      body: new FormData(form)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Unable to save your update.');
+    return data;
+  };
+
+  const showReward = amount => {
+    if (!amount) return;
+    reward.textContent = `${amount > 0 ? '+' : ''}${amount} XP`;
+    reward.classList.remove('show');
+    requestAnimationFrame(() => reward.classList.add('show'));
+    window.setTimeout(() => reward.classList.remove('show'), 1800);
+  };
+
+  async function refreshSummary() {
+    const [summaryResponse, statsResponse] = await Promise.all([
+      fetch('/api/dashboard-summary/'),
+      fetch('/api/dashboard-stats/')
+    ]);
+    if (!summaryResponse.ok || !statsResponse.ok) return;
+    const summary = await summaryResponse.json();
+    const stats = await statsResponse.json();
+    const xpChange = summary.total_xp - lastXp;
+    document.getElementById('dashboardXpValue').textContent = summary.total_xp;
+    document.getElementById('dashboardLevelBadge').textContent = `Level ${summary.level}`;
+    document.getElementById('dashboardXpProgress').style.width = `${summary.xp_level_progress}%`;
+    document.getElementById('dashboardXpLabel').textContent = `${summary.xp_to_next_level} XP to Level ${summary.level + 1}`;
+    document.getElementById('dashboardTaskStat').textContent = `${stats.completed_today_count}/${stats.todays_tasks_count}`;
+    document.getElementById('dashboardTaskRemaining').textContent = `${Math.max(0, stats.todays_tasks_count - stats.completed_today_count)} remaining`;
+    document.getElementById('dashboardHabitStat').textContent = `${stats.completed_habits_count}/${stats.active_habits_count}`;
+    document.getElementById('dashboardHabitRemaining').textContent = `${Math.max(0, stats.active_habits_count - stats.completed_habits_count)} to go`;
+    lastXp = summary.total_xp;
+    showReward(xpChange);
+  }
+
+  document.querySelectorAll('.dashboard-task-toggle').forEach(form => form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = form.querySelector('button');
+    button.disabled = true;
+    try {
+      const data = await post(form.dataset.url, form);
+      const item = form.closest('.task-item');
+      const done = data.status === 'COMPLETED';
+      item.classList.toggle('completed', done);
+      button.classList.toggle('done', done);
+      await refreshSummary();
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }));
+
+  document.querySelectorAll('.dashboard-habit-toggle').forEach(form => form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = form.querySelector('button');
+    button.disabled = true;
+    try {
+      const data = await post(form.dataset.url, form);
+      const item = form.closest('.habit-item');
+      button.classList.toggle('done', data.completed);
+      item.querySelector('.habit-week-day.today')?.classList.toggle('done', data.completed);
+      const streak = item.querySelector('.habit-streak .fire');
+      if (streak) streak.textContent = `🔥 ${data.streak}d streak`;
+      const best = item.querySelector('.habit-streak span:last-child');
+      if (best) best.textContent = `Best: ${data.longest_streak}d`;
+      await refreshSummary();
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }));
+
+  window.setInterval(refreshSummary, 30000);
+})();
+</script>
+<script>
+(() => {
+  const widget = document.querySelector('.focus-widget');
+  if (!widget) return;
+  const controls = widget.querySelector('a.btn');
+  const time = widget.querySelector('.focus-time');
+  const state = widget.querySelector('.focus-state');
+  const ring = widget.querySelector('.focus-ring-fg');
+  const circumference = 2 * Math.PI * 90;
+  let seconds = 25 * 60, sessionId = null, interval = null, running = false;
+  const csrf = '{{ csrf_token }}';
+  const endModal = document.getElementById('dashboardEndFocusModal');
+  const openEndModal = () => { endModal.classList.add('show'); endModal.setAttribute('aria-hidden', 'false'); };
+  const closeEndModal = () => { endModal.classList.remove('show'); endModal.setAttribute('aria-hidden', 'true'); };
+
+  async function post(url, data) {
+    const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: new URLSearchParams(data) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Unable to update focus session.');
+    return result;
+  }
+
+  function render() {
+    time.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    ring.style.strokeDasharray = circumference;
+    ring.style.strokeDashoffset = circumference * (seconds / (25 * 60));
+    state.textContent = running ? 'Focusing' : sessionId ? 'Paused' : 'Ready to focus';
+    state.classList.toggle('active', running);
+  }
+
+  function controlsForSession() {
+    controls.outerHTML = '<div class="dashboard-focus-controls"><button class="btn btn-secondary" id="dashboardFocusPause" type="button"><i class="bi bi-pause-fill"></i> Pause</button><button class="btn btn-danger-ghost" id="dashboardFocusEnd" type="button">End</button></div>';
+    widget.querySelector('#dashboardFocusPause').onclick = pause;
+    widget.querySelector('#dashboardFocusEnd').onclick = end;
+  }
+
+  async function start(event) {
+    event?.preventDefault();
+    try {
+      const data = await post('{% url "pomodoro:pomodoro_start" %}', { duration: 25 });
+      sessionId = data.session_id; running = true; controlsForSession(); render();
+      interval = window.setInterval(async () => {
+        seconds -= 1;
+        render();
+        if (seconds <= 0) {
+          clearInterval(interval);
+          running = false;
+          await post(`/pomodoro/${sessionId}/update/`, { status: 'COMPLETED', focus_seconds: 1500 });
+          window.location.reload();
+        }
+      }, 1000);
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function pause() {
+    clearInterval(interval); running = false;
+    try {
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'PAUSED', focus_seconds: 1500 - seconds });
+      const pauseButton = widget.querySelector('#dashboardFocusPause');
+      pauseButton.innerHTML = '<i class="bi bi-play-fill"></i> Resume';
+      pauseButton.onclick = resume;
+      render();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function resume() {
+    try {
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'RUNNING', focus_seconds: 1500 - seconds });
+      running = true;
+      const pauseButton = widget.querySelector('#dashboardFocusPause');
+      pauseButton.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+      pauseButton.onclick = pause;
+      render();
+      interval = window.setInterval(async () => {
+        seconds -= 1;
+        render();
+        if (seconds <= 0) {
+          clearInterval(interval);
+          running = false;
+          await post(`/pomodoro/${sessionId}/update/`, { status: 'COMPLETED', focus_seconds: 1500 });
+          window.location.reload();
+        }
+      }, 1000);
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function end() { openEndModal(); }
+
+  async function confirmEnd() {
+    clearInterval(interval);
+    try {
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'STOPPED', focus_seconds: 1500 - seconds });
+      window.location.reload();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  document.getElementById('dashboardEndFocusConfirm').onclick = confirmEnd;
+  document.getElementById('dashboardEndFocusCancel').onclick = closeEndModal;
+  document.getElementById('dashboardEndFocusClose').onclick = closeEndModal;
+  endModal.onclick = event => { if (event.target === endModal) closeEndModal(); };
+  controls.addEventListener('click', start);
+  render();
+})();
+</script>
+{% endblock %}

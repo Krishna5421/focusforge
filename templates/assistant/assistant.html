@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Assistant &middot; FocusForge{% endblock %}
+{% block topbar_title %}AI Assistant{% endblock %}
+{% block topbar_subtitle %}Your productivity companion, informed by your live workspace{% endblock %}
+
+{% block content %}
+<div class="ai-layout">
+  <section class="ai-chat">
+    <div class="ai-messages" id="messages">
+      <div class="ai-msg assistant">
+        <div class="ai-msg-avatar"><i class="bi bi-stars"></i></div>
+        <div class="ai-msg-bubble">
+          Hi {{ request.user.first_name|default:request.user.username }}! I can help you plan your day, prioritize tasks, or reflect on your progress. What would you like to work on?
+        </div>
+      </div>
+
+      {% for chat in chat_history %}
+        <div class="ai-msg user">
+          <div class="ai-msg-avatar"><i class="bi bi-person-fill"></i></div>
+          <div class="ai-msg-bubble">{{ chat.query|linebreaksbr }}</div>
+        </div>
+        {% if chat.response %}
+          <div class="ai-msg assistant">
+            <div class="ai-msg-avatar"><i class="bi bi-stars"></i></div>
+            <div class="ai-msg-bubble">{{ chat.response|linebreaksbr }}</div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="ai-suggested" aria-label="Suggested prompts">
+      <button type="button" data-prompt="What should I work on first today?">What should I work on first?</button>
+      <button type="button" data-prompt="How can I improve my focus today?">Improve my focus</button>
+      <button type="button" data-prompt="Help me plan my study session.">Plan a study session</button>
+      <button type="button" data-prompt="Summarize my week.">Summarize my week</button>
+    </div>
+
+    <form id="assistant-form" class="ai-input-area">
+      {% csrf_token %}
+      <input class="ai-input" id="question" maxlength="800" autocomplete="off"
+             placeholder="Ask about tasks, habits, focus, goals..." aria-label="Message the AI assistant">
+      <button class="btn btn-primary" id="sendButton" type="submit" aria-label="Send message">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </form>
+  </section>
+
+  <aside class="ai-side">
+    <section class="card ai-glance">
+      <div class="card-head">
+        <h2 class="card-title">Today at a glance</h2>
+      </div>
+      <div class="ai-glance-body">
+        <div><span>Tasks</span><strong>{{ tasks_completed }}/{{ tasks_total }}</strong><small>completed</small></div>
+        <div><span>Focus time</span><strong>{{ focus_hours }}h {{ focus_mins }}m</strong><small>today</small></div>
+        <div><span>Habits</span><strong>{{ habits_completed }}/{{ habits_total }}</strong><small>completed</small></div>
+        <div><span>Goal progress</span><strong>{{ goals_avg_progress }}%</strong><small>average</small></div>
+      </div>
+    </section>
+
+    <section class="card ai-usage">
+      <div class="card-head">
+        <h2 class="card-title">Usage</h2>
+      </div>
+      <div class="ai-usage-body">
+        <div>
+          <span>Messages today</span>
+          <strong id="usageCount">{{ messages_today }}</strong>
+          <b>/ {{ message_limit }}</b>
+        </div>
+        <div class="usage-track">
+          <div id="usageFill" style="width:{% widthratio messages_today message_limit 100 %}%"></div>
+        </div>
+        <p>Resets at midnight.</p>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const form = document.getElementById('assistant-form'),
+        input = document.getElementById('question'),
+        messages = document.getElementById('messages'),
+        send = document.getElementById('sendButton'),
+        usage = document.getElementById('usageCount'),
+        usageFill = document.getElementById('usageFill'),
+        limit = {{ message_limit }};
+
+  const escape = value => {
+    const el = document.createElement('div');
+    el.textContent = value;
+    return el.innerHTML;
+  };
+
+  const scroll = () => messages.scrollTop = messages.scrollHeight;
+
+  const add = (type, text) => messages.insertAdjacentHTML('beforeend', `<div class="ai-msg ${type}"><div class="ai-msg-avatar"><i class="bi ${type==='user'?'bi-person-fill':'bi-stars'}"></i></div><div class="ai-msg-bubble">${escape(text)}</div></div>`);
+
+  async function sendQuestion(question) {
+    if (!question || send.disabled) return;
+    add('user', question);
+    input.value = '';
+    send.disabled = true;
+    send.innerHTML = '<span class="ai-loading"></span>';
+    scroll();
+    try {
+      const response = await fetch('/api/assistant/ask/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ question })
+      });
+      const data = await response.json();
+      add('assistant', data.answer || data.error || 'Unable to get a response.');
+      if (data.usage !== undefined) {
+        usage.textContent = data.usage;
+        usageFill.style.width = `${Math.min(100, data.usage / limit * 100)}%`;
+      }
+    } catch {
+      add('assistant', 'Unable to reach the assistant right now. Please try again.');
+    } finally {
+      send.disabled = false;
+      send.innerHTML = '<i class="bi bi-send-fill"></i>';
+      scroll();
+    }
+  }
+
+  document.querySelectorAll('[data-prompt]').forEach(button =>
+    button.addEventListener('click', () => sendQuestion(button.dataset.prompt))
+  );
+
+  const dashboardPrompt = new URLSearchParams(window.location.search).get('prompt');
+  if (dashboardPrompt) sendQuestion(dashboardPrompt);
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    sendQuestion(input.value.trim());
+  });
+
+  scroll();
+})();
+</script>
+{% endblock %}
