@@ -26,7 +26,11 @@ class StudySession(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='sessions')
     date = models.DateField()
     duration_minutes = models.IntegerField()
+    planned_minutes = models.IntegerField(default=0)
+    actual_seconds = models.IntegerField(default=0)
     notes = models.TextField(blank=True)
+    resource_name = models.CharField(max_length=255, blank=True)
+    resource_file = models.FileField(upload_to='study_files/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -34,6 +38,19 @@ class StudySession(models.Model):
 
     def __str__(self):
         return f"{self.subject.name} - {self.date} ({self.duration_minutes} min)"
+
+
+class ActiveStudySession(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='active_study_session')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='active_sessions')
+    planned_minutes = models.IntegerField()
+    remaining_seconds = models.IntegerField()
+    notes = models.TextField(blank=True)
+    resource_name = models.CharField(max_length=255, blank=True)
+    resource_file = models.FileField(upload_to='study_files/', blank=True, null=True)
+    is_running = models.BooleanField(default=False)
+    timer_started_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class StudyFileLog(models.Model):
