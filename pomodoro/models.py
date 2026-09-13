@@ -4,6 +4,17 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from tasks.models import Task
 
 
+class PomodoroSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='pomodoro_settings')
+    daily_goal = models.PositiveSmallIntegerField(
+        default=6,
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+    )
+
+    def __str__(self):
+        return f"{self.user.username}'s Pomodoro settings"
+
+
 class PomodoroSession(models.Model):
     STATUS_CHOICES = [
         ('RUNNING', 'Running'),
@@ -22,6 +33,7 @@ class PomodoroSession(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='RUNNING')
 
     started_at = models.DateTimeField(auto_now_add=True)
+    last_resumed_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     actual_focus_seconds = models.IntegerField(default=0)
 
