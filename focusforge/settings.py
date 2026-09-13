@@ -11,23 +11,47 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import sys
 from decouple import config
 from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def env_bool(name, default=False):
+    """Read normal boolean environment values and tolerate existing mode labels."""
+    value = str(config(name, default=str(default))).strip().lower()
+    return value in {'1', 'true', 'yes', 'on', 'debug', 'development', 'local'}
+
+
+def env_list(name):
+    return [value.strip() for value in config(name, default='').split(',') if value.strip()]
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-temp-key-for-dev')
+SECRET_KEY = config('SECRET_KEY', default='')
+if not SECRET_KEY:
+    raise ImproperlyConfigured('SECRET_KEY environment variable must be set.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = env_bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = []
+render_hostname = config('RENDER_EXTERNAL_HOSTNAME', default='').strip()
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', *env_list('ALLOWED_HOSTS')]
+if render_hostname and render_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_hostname)
+
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+if render_hostname:
+    render_origin = f'https://{render_hostname}'
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
 
 
 # Application definition
@@ -71,12 +95,17 @@ STORAGES = {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+# django-cloudinary-storage overrides collectstatic and only copies source files
+# when this legacy value identifies its static backend. STORAGES remains the
+# Django 6 source of truth, so WhiteNoise still owns the collected files.
+STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticCloudinaryStorage'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -98,6 +127,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.sidebar_data',
             ],
         },
     },
@@ -106,15 +136,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'focusforge.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database: Render provides DATABASE_URL for PostgreSQL; SQLite remains the local default.
+DATABASE_URL = config('DATABASE_URL', default='').strip()
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -193,9 +231,23 @@ SIMPLE_JWT = {
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = f'FocusForge <{config("EMAIL_HOST_USER")}>'
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'FocusForge <{EMAIL_HOST_USER}>')
+SITE_URL = config('SITE_URL', default='http://127.0.0.1:8000').rstrip('/')
+
+
+# Render terminates TLS at its proxy. Keep these production-only so local HTTP works.
+if not DEBUG:
+    running_tests = 'test' in sys.argv
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', default=not running_tests)
+    SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', default=not running_tests)
+    CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', default=not running_tests)
+    SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000, cast=int)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
