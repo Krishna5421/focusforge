@@ -1,42 +1,125 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}FocusForge{% endblock %}</title>
-    <script>
-    (function () {
-        const saved = localStorage.getItem('ff-theme');
-        if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
-    })();
-</script>
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    {% block extra_css %}{% endblock %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    try {
+      document.documentElement.setAttribute('data-theme', localStorage.getItem('ff-theme') || 'dark');
+    } catch (error) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  </script>
+  <title>{% block title %}FocusForge{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <div class="page-ambient" aria-hidden="true"></div>
-    <div class="page-ambient-mid" aria-hidden="true"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="{% url 'core:dashboard' %}">
+      <div class="brand-mark">
+        <img src="{% static 'images/focusforge-logo.png' %}" alt="FocusForge logo">
+      </div>
+      <div class="brand-name">Focus<span>Forge</span></div>
+    </a>
 
-    {% include 'partials/navbar.html' %}
-    {% include 'partials/drawer.html' %}
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Workspace</div>
+      <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'core:dashboard' %}">
+        <i class="bi bi-grid"></i> Dashboard
+      </a>
+      <a class="nav-item {% if request.resolver_match.app_name == 'tasks' %}active{% endif %}" href="{% url 'tasks:task_list' %}">
+        <i class="bi bi-check2-square"></i> Tasks
+        {% if sidebar_open_tasks %}<span class="nav-badge">{{ sidebar_open_tasks }}</span>{% endif %}
+      </a>
+      <a class="nav-item {% if request.resolver_match.app_name == 'habits' %}active{% endif %}" href="{% url 'habits:habit_list' %}">
+        <i class="bi bi-heart"></i> Habits
+      </a>
+      <a class="nav-item {% if request.resolver_match.app_name == 'goals' %}active{% endif %}" href="{% url 'goals:goal_list' %}">
+        <i class="bi bi-bullseye"></i> Goals
+      </a>
+      <a class="nav-item {% if request.resolver_match.app_name == 'pomodoro' %}active{% endif %}" href="{% url 'pomodoro:pomodoro_page' %}">
+        <i class="bi bi-stopwatch"></i> Focus
+      </a>
+      <a class="nav-item {% if request.resolver_match.app_name == 'study' %}active{% endif %}" href="{% url 'study:study_dashboard' %}">
+        <i class="bi bi-book"></i> Study Sessions
+      </a>
 
-    <main class="page-content">
+      <div class="nav-section-label">Insights</div>
+      <a class="nav-item {% if request.resolver_match.url_name == 'analytics_page' %}active{% endif %}" href="{% url 'core:analytics_page' %}">
+        <i class="bi bi-bar-chart"></i> Analytics
+      </a>
+      <a class="nav-item {% if request.resolver_match.app_name == 'achievements' %}active{% endif %}" href="{% url 'achievements:achievement_list' %}">
+        <i class="bi bi-trophy"></i> Achievements
+      </a>
+      <a class="nav-item {% if request.resolver_match.app_name == 'assistant' %}active{% endif %}" href="{% url 'assistant:assistant_page' %}">
+        <i class="bi bi-stars"></i> AI Assistant
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="user-chip" href="{% url 'accounts:profile' %}">
+        <div class="avatar">
+          {% if request.user.profile.profile_picture %}
+            <img class="avatar-image" data-avatar-image src="{{ request.user.profile.profile_picture.url }}"
+                 alt="{{ request.user.get_full_name|default:request.user.username }}'s profile picture">
+            <span class="avatar-fallback" hidden>{{ request.user.username|first|upper }}</span>
+          {% else %}
+            <span class="avatar-fallback">{{ request.user.username|first|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="user-meta">
+          <div class="user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <div class="user-level">Level {{ request.user.profile.get_level }} · {{ request.user.profile.total_xp }} XP</div>
+        </div>
+      </a>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle" aria-label="Menu"><i class="bi bi-list"></i></button>
+      <div>
+        <span class="page-title">{% block topbar_title %}FocusForge{% endblock %}</span>
+        <span class="page-title-sub">{% block topbar_subtitle %}Your productivity workspace{% endblock %}</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <form class="search-trigger" action="{% url 'tasks:task_list' %}" method="get">
+        <i class="bi bi-search"></i>
+        <input name="search" placeholder="Search tasks, habits, goals…">
+      </form>
+      <button class="icon-btn theme-toggle" id="themeToggle" title="Switch to light theme" aria-label="Switch to light theme">
+        <i class="bi bi-moon-fill"></i>
+      </button>
+      <a class="icon-btn" href="{% url 'notifications:notification_list' %}" title="Notifications" id="notificationBell">
+        <i class="bi bi-bell"></i>
+        {% if sidebar_unread_notifications %}<span class="dot"></span>{% endif %}
+      </a>
+      <a class="icon-btn" href="{% url 'accounts:profile' %}" title="Profile"><i class="bi bi-gear"></i></a>
+    </header>
+
+    <main class="content">
+      <section class="page active">
         {% if messages %}
-            <div class="messages-wrap">
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                {% endfor %}
-            </div>
+          <div class="toast-container" aria-live="polite">
+            {% for message in messages %}
+              <div class="toast {{ message.tags }}" role="status">{{ message }}</div>
+            {% endfor %}
+          </div>
         {% endif %}
 
         {% block content %}{% endblock %}
+      </section>
     </main>
+  </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'js/main.js' %}"></script>
-    {% block extra_js %}{% endblock %}
+<script src="{% static 'js/live_shell.js' %}"></script>
+{% block extra_js %}{% endblock %}
 </body>
 </html>

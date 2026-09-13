@@ -1,247 +1,236 @@
 {% extends 'base.html' %}
-{% load static %}
 
-{% block title %}Habits - FocusForge{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/habit_list.css' %}">
-{% endblock %}
+{% block title %}Habits · FocusForge{% endblock %}
+{% block topbar_title %}Habits{% endblock %}
+{% block topbar_subtitle %}Build the routines that shape your days{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Habits</h1>
-        <p class="page-sub">Build consistency, one day at a time.</p>
-    </div>
-    <a href="{% url 'habits:habit_create' %}" class="btn-primary">
-        <i class="bi bi-plus-lg"></i> Add New Habit
-    </a>
+<div class="page-head">
+  <div>
+    <h2>Habits</h2>
+    <p>Build the routines that shape your days.</p>
+  </div>
+  <button class="btn btn-primary" id="newHabitButton"><i class="bi bi-plus-lg"></i>New Habit</button>
 </div>
 
-<!-- Stats Grid -->
-<div class="stats-grid">
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-total"><i class="bi bi-stars"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Active Habits</div>
-            <div class="stat-value" id="statTotal">{{ total_habits }}</div>
-            <div class="stat-sub">Total tracking</div>
-        </div>
+<div class="habits-layout">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-heart"></i>Today's Habits</div>
+      <div style="font-size:12px;color:var(--text-2)" id="habitProgress">{{ completed_today_count }} / {{ total_habits }} completed</div>
     </div>
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-completed"><i class="bi bi-check2-circle"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Done Today</div>
-            <div class="stat-value" id="statCompleted">{{ completed_today_count }}</div>
-            <div class="stat-sub">Out of {{ total_habits }}</div>
-        </div>
+    <div class="card-body flush">
+      <ul class="habit-list" id="habitsList">
+        {% for habit in habits %}
+          <li class="habit-item"
+              data-habit-id="{{ habit.pk }}"
+              data-name="{{ habit.name|escape }}"
+              data-category="{{ habit.category }}"
+              data-frequency="{{ habit.frequency }}"
+              data-target-days="{{ habit.target_days|join:',' }}">
+            <div class="habit-icon"><i class="bi {{ habit.icon }}"></i></div>
+            <div class="habit-body">
+              <div class="habit-name">{{ habit.name }}</div>
+              <div class="habit-streak">
+                <span class="fire">🔥 <span class="current-streak">{{ habit.current_streak }}</span>d streak</span>
+                <span>Best: <span class="best-streak">{{ habit.longest_streak }}</span>d</span>
+              </div>
+            </div>
+            <div class="habit-actions">
+              <button class="task-action-btn edit-habit" type="button" title="Edit"><i class="bi bi-pencil"></i></button>
+              <button class="task-action-btn delete-habit" type="button" title="Delete"><i class="bi bi-trash"></i></button>
+              <button class="habit-check {% if habit.completed_today %}done{% endif %}" type="button" title="Mark complete">
+                <i class="bi bi-check"></i>
+              </button>
+            </div>
+          </li>
+        {% empty %}
+          <li class="empty" style="padding:36px">No habits yet. Add your first routine.</li>
+        {% endfor %}
+      </ul>
     </div>
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-progress"><i class="bi bi-fire"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Active Streaks</div>
-            <div class="stat-value" id="statStreaks">{{ active_streaks }}</div>
-            <div class="stat-sub">Keep it going</div>
-        </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="bi bi-calendar3"></i>Monthly Activity</div>
     </div>
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-overdue"><i class="bi bi-trophy"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Best Streak</div>
-            <div class="stat-value" id="statBest">{{ best_streak }}</div>
-            <div class="stat-sub">Days in a row</div>
-        </div>
+    <div class="heatmap">
+      {% for day in activity_days %}
+        <div class="heatmap-cell {% if day.level %}l{{ day.level }}{% endif %}"
+             {% if day.date == today %}id="todayHabitActivity"{% endif %}
+             title="{{ day.date|date:'M j' }}: {{ day.count }} habits completed"></div>
+      {% endfor %}
     </div>
+    <div class="heatmap-legend">
+      <span>Less</span>
+      <div class="swatch"></div>
+      <div class="swatch l1"></div>
+      <div class="swatch l2"></div>
+      <div class="swatch l3"></div>
+      <div class="swatch l4"></div>
+      <span>More</span>
+    </div>
+  </div>
 </div>
 
-<!-- Main Content Grid -->
-<div class="tasks-layout">
-    <!-- Habit List Section -->
-    <div class="tasks-main glass card-pad">
-        <div class="section-header">
-            <h2 class="section-title">My Habits</h2>
-            <div class="section-actions">
-                <button class="btn-secondary" id="filterToggle">
-                    <i class="bi bi-funnel"></i> Filter
-                </button>
-            </div>
-        </div>
-
-        <!-- Filter Panel -->
-<div class="filter-panel" id="filterPanel" style="display: none;">
-    <form method="get" class="filter-form">
+<div class="modal-overlay" id="habitModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="habitModalTitle">New Habit</div>
+      <button class="icon-btn" type="button" id="closeHabitModal"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <form id="habitForm">
+      <div class="modal-body">
         <div class="form-group">
-            <label>Frequency</label>
-            <div class="custom-select-wrapper">
-                <div class="custom-select">
-                    <div class="custom-select__trigger">
-                        <span>{% if request.GET.frequency == 'DAILY' %}Daily{% elif request.GET.frequency == 'WEEKLY' %}Weekly{% else %}All Frequencies{% endif %}</span>
-                        <i class="bi bi-chevron-down"></i>
-                    </div>
-                    <div class="custom-options">
-                        <span class="custom-option" data-value="">All Frequencies</span>
-                        <span class="custom-option" data-value="DAILY">Daily</span>
-                        <span class="custom-option" data-value="WEEKLY">Weekly</span>
-                    </div>
-                    <input type="hidden" name="frequency" value="{{ request.GET.frequency }}">
-                </div>
-            </div>
+          <label class="form-label">Habit name</label>
+          <input class="form-input" name="name" required placeholder="e.g. Morning meditation">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" name="category">
+              {% for value,label in habit_categories %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Frequency</label>
+            <select class="form-select" name="frequency">
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
-            <label>&nbsp;</label>
-            <button type="submit" class="btn-primary">Apply</button>
+          <label class="form-label">Target days (optional)</label>
+          <input class="form-input" name="target_days" placeholder="1,2,3,4,5 for Monday to Friday">
+          <small style="color:var(--text-2)">Use 1 for Monday through 7 for Sunday.</small>
         </div>
+        <div class="form-error" id="habitFormError" hidden></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" type="button" id="cancelHabitModal">Cancel</button>
+        <button class="btn btn-primary" type="submit" id="saveHabitButton">Create Habit</button>
+      </div>
     </form>
+  </div>
 </div>
 
-        <!-- Habit Table -->
-        <div class="task-table-wrapper">
-            <div class="task-table-header">
-                <div class="th-check"></div>
-                <div class="th-task">Habit</div>
-                <div class="th-priority">Frequency</div>
-                <div class="th-due">Streak</div>
-                <div class="th-status">Progress</div>
-                <div class="th-actions"></div>
-            </div>
-            <div class="task-table-body">
-                {% for habit in habits %}
-                <div class="task-row-item" data-habit-id="{{ habit.id }}">
-                    <div class="td-check">
-                        <button type="button"
-                                class="task-check {% if habit.completed_today %}done{% endif %}"
-                                data-habit-id="{{ habit.id }}">
-                            {% if habit.completed_today %}
-                                <i class="bi bi-check"></i>
-                            {% endif %}
-                        </button>
-                    </div>
-                    <div class="td-task">
-    <span class="task-title {% if habit.completed_today %}task-done{% endif %}">
-        <i class="bi {{ habit.icon }}" style="margin-right: 8px; color: var(--secondary);"></i>
-        {{ habit.name }}
-    </span>
-    {% if habit.category %}
-        <span class="category-tag" style="margin-left: 8px; background: rgba(45, 212, 191, 0.1); color: var(--secondary); border: 1px solid rgba(45, 212, 191, 0.3);">
-            {{ habit.get_category_display }}
-        </span>
-    {% endif %}
-</div>
-                    <div class="td-priority">
-                        <span class="priority-badge priority-{{ habit.frequency|lower }}">
-                            <i class="bi bi-{% if habit.frequency == 'DAILY' %}calendar-check{% else %}calendar-week{% endif %}"></i>
-                            {{ habit.get_frequency_display }}
-                        </span>
-                    </div>
-                    <div class="td-due">
-                        {% if habit.current_streak > 0 %}
-                            <span class="streak-badge"><i class="bi bi-fire"></i> {{ habit.current_streak }} days</span>
-                        {% else %}
-                            <span class="text-muted">0 days</span>
-                        {% endif %}
-                    </div>
-                    <div class="td-status">
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" style="width: {{ habit.completion_rate }}%;"></div>
-                        </div>
-                        <span class="progress-text">{{ habit.completion_rate }}%</span>
-                    </div>
-                    <div class="td-actions">
-                        <div class="dropdown">
-                            <button class="icon-btn-plain dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots-vertical"></i>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'habits:habit_update' habit.pk %}">
-    <i class="bi bi-pencil me-2"></i> Edit
-</a>
-                                </li>
-                                <li>
-                                    <form method="post" action="{% url 'habits:habit_delete' habit.pk %}" style="display:inline; margin:0;" onsubmit="return confirm('Remove this habit?');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="dropdown-item text-danger" style="border:none; background:none; width:100%; text-align:left; cursor:pointer;">
-                                            <i class="bi bi-trash me-2"></i> Remove
-                                        </button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem;">
-                    <i class="bi bi-stars" style="font-size: 2.5rem; color: var(--text-muted); opacity: 0.3; margin-bottom: 1rem; display: block;"></i>
-                    <p class="empty-text">No habits yet. Start building your routine!</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+<div class="modal-overlay" id="deleteHabitModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Delete this habit?</div>
+      <button class="icon-btn" type="button" id="closeDeleteHabitModal"><i class="bi bi-x-lg"></i></button>
     </div>
-
-    <!-- Right Sidebar -->
-    <div class="tasks-sidebar">
-        <!-- Frequency Chart -->
-        <div class="glass card-pad">
-            <h3 class="card-title">Habits by Frequency</h3>
-            <div class="donut-chart-wrap">
-                <canvas id="frequencyChart"></canvas>
-                <div class="chart-center">
-                    <div class="chart-total">{{ total_habits }}</div>
-                    <div class="chart-label">Total</div>
-                </div>
-            </div>
-            <div class="chart-legend">
-                <div class="legend-item">
-                    <span class="legend-dot" style="background: #63B3ED;"></span>
-                    <span class="legend-label">Daily</span>
-                    <span class="legend-value">{{ daily_count }}</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-dot" style="background: #8B5CF6;"></span>
-                    <span class="legend-label">Weekly</span>
-                    <span class="legend-value">{{ weekly_count }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Monthly Calendar Widget -->
-        <div class="glass card-pad">
-            <div class="card-header-row">
-                <h3 class="card-title" id="calendarMonthYear">Month Year</h3>
-            </div>
-            <div class="mini-calendar">
-                <div class="calendar-header">
-                    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-                </div>
-                <div class="calendar-grid" id="calendarGrid"></div>
-                <div class="calendar-legend">
-                    <div class="legend-item-mini">
-                        <span class="legend-dot-mini completed"></span>
-                        <span>Completed</span>
-                    </div>
-                    <div class="legend-item-mini">
-                        <span class="legend-dot-mini today"></span>
-                        <span>Today</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="modal-body">
+      <p id="deleteHabitMessage" style="color:var(--text-1)"></p>
     </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" type="button" id="cancelDeleteHabit">Cancel</button>
+      <button class="btn btn-danger-ghost" type="button" id="confirmDeleteHabit" style="background:var(--danger);color:#fff;border-color:var(--danger)">Confirm</button>
+    </div>
+  </div>
 </div>
-
-<!-- Toast Container -->
-<div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
-    const frequencyData = {
-        daily: {{ daily_count }},
-        weekly: {{ weekly_count }}
-    };
-    const csrfToken = '{{ csrf_token }}';
+const habitCsrf = '{{ csrf_token }}',
+      habitsList = document.getElementById('habitsList'),
+      habitModal = document.getElementById('habitModal'),
+      habitForm = document.getElementById('habitForm'),
+      deleteHabitModal = document.getElementById('deleteHabitModal');
+let editingHabitId = null, deleteHabitId = null, deleteHabitRow = null;
+
+function openHabitModal(row) {
+  editingHabitId = row?.dataset.habitId || null;
+  habitForm.reset();
+  document.getElementById('habitFormError').hidden = true;
+  document.getElementById('habitModalTitle').textContent = editingHabitId ? 'Edit Habit' : 'New Habit';
+  document.getElementById('saveHabitButton').textContent = editingHabitId ? 'Save changes' : 'Create Habit';
+  if (row) {
+    habitForm.name.value = row.dataset.name;
+    habitForm.category.value = row.dataset.category;
+    habitForm.frequency.value = row.dataset.frequency;
+    habitForm.target_days.value = row.dataset.targetDays;
+  }
+  habitModal.classList.add('show');
+  habitForm.name.focus();
+}
+
+function closeHabitModal() { habitModal.classList.remove('show'); }
+
+document.getElementById('newHabitButton').onclick = () => openHabitModal();
+document.getElementById('closeHabitModal').onclick = closeHabitModal;
+document.getElementById('cancelHabitModal').onclick = closeHabitModal;
+habitModal.onclick = e => { if (e.target === habitModal) closeHabitModal(); };
+
+habitForm.onsubmit = async e => {
+  e.preventDefault();
+  const url = editingHabitId ? `/habits/ajax/${editingHabitId}/update/` : '{% url "habits:ajax_habit_create" %}',
+        r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': habitCsrf }, body: new FormData(habitForm) }),
+        data = await r.json();
+  if (!r.ok) {
+    const error = document.getElementById('habitFormError');
+    error.textContent = data.error || 'Could not save habit.';
+    error.hidden = false;
+    return;
+  }
+  location.reload();
+};
+
+function closeDeleteHabitModal() {
+  deleteHabitModal.classList.remove('show');
+  deleteHabitId = null;
+  deleteHabitRow = null;
+}
+document.getElementById('closeDeleteHabitModal').onclick = closeDeleteHabitModal;
+document.getElementById('cancelDeleteHabit').onclick = closeDeleteHabitModal;
+deleteHabitModal.onclick = e => { if (e.target === deleteHabitModal) closeDeleteHabitModal(); };
+
+habitsList.addEventListener('click', async e => {
+  const row = e.target.closest('.habit-item');
+  if (!row) return;
+  const id = row.dataset.habitId;
+  if (e.target.closest('.edit-habit')) return openHabitModal(row);
+  if (e.target.closest('.delete-habit')) {
+    deleteHabitId = id;
+    deleteHabitRow = row;
+    document.getElementById('deleteHabitMessage').textContent = `"${row.dataset.name}" will be removed from your active habits.`;
+    deleteHabitModal.classList.add('show');
+    return;
+  }
+  if (e.target.closest('.habit-check')) {
+    const r = await fetch(`/habits/ajax/${id}/toggle/`, { method: 'POST', headers: { 'X-CSRFToken': habitCsrf } });
+    if (!r.ok) {
+      window.FocusForge?.toast('Could not update habit.', 'error');
+      return;
+    }
+    const data = await r.json();
+    row.querySelector('.habit-check').classList.toggle('done', data.completed);
+    row.querySelector('.current-streak').textContent = data.streak;
+    row.querySelector('.best-streak').textContent = data.longest_streak;
+    document.getElementById('habitProgress').textContent = `${data.completed_today_count} / {{ total_habits }} completed`;
+    const todayCell = document.getElementById('todayHabitActivity');
+    if (todayCell) {
+      todayCell.className = `heatmap-cell${data.activity_level ? ` l${data.activity_level}` : ''}`;
+      todayCell.title = `Today: ${data.activity_count} habits completed`;
+    }
+    window.FocusForge?.toast(data.completed ? 'Habit completed' : 'Habit unmarked', data.completed ? 'success' : 'info');
+    window.FocusForge?.refreshShell();
+  }
+});
+
+document.getElementById('confirmDeleteHabit').onclick = async () => {
+  if (!deleteHabitId) return;
+  const r = await fetch(`/habits/ajax/${deleteHabitId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': habitCsrf } });
+  if (r.ok) {
+    deleteHabitRow.remove();
+    closeDeleteHabitModal();
+    location.reload();
+  }
+};
 </script>
-<script src="{% static 'js/habit_list.js' %}"></script>
 {% endblock %}

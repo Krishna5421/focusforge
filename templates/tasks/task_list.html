@@ -1,342 +1,323 @@
 {% extends 'base.html' %}
-{% load static %}
 
-{% block title %}Tasks - FocusForge{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/task_list.css' %}">
-{% endblock %}
+{% block title %}Tasks · FocusForge{% endblock %}
+{% block topbar_title %}Tasks{% endblock %}
+{% block topbar_subtitle %}Organize everything you need to get done{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Tasks</h1>
-        <p class="page-sub">Manage and track your productivity</p>
-    </div>
-    <a href="{% url 'tasks:task_create' %}" class="btn-primary">
-        <i class="bi bi-plus-lg"></i> Add New Task
-    </a>
+<div class="page-head">
+  <div>
+    <h2>Tasks</h2>
+    <p>Organize everything you need to get done.</p>
+  </div>
+  <button class="btn btn-primary" id="newTaskButton"><i class="bi bi-plus-lg"></i>New Task</button>
 </div>
 
-<!-- Stats Grid -->
-<div class="stats-grid">
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-total"><i class="bi bi-clipboard-check"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Total Tasks</div>
-            <div class="stat-value" id="statTotal">{{ total_tasks }}</div>
-            <div class="stat-sub">All time</div>
+<form class="toolbar" method="get">
+  <div class="toolbar-search">
+    <i class="bi bi-search"></i>
+    <input name="search" value="{{ request.GET.search }}" placeholder="Search tasks…">
+  </div>
+  <button class="filter-chip {% if not request.GET.filter %}active{% endif %}" name="filter" value="">All</button>
+  <button class="filter-chip {% if request.GET.filter == 'today' %}active{% endif %}" name="filter" value="today">Today</button>
+  <button class="filter-chip {% if request.GET.filter == 'upcoming' %}active{% endif %}" name="filter" value="upcoming">Upcoming</button>
+  <button class="filter-chip {% if request.GET.filter == 'overdue' %}active{% endif %}" name="filter" value="overdue">Overdue</button>
+  <button class="filter-chip {% if request.GET.filter == 'completed' %}active{% endif %}" name="filter" value="completed">Completed</button>
+  <div style="flex:1"></div>
+  <button type="button" class="filter-chip" id="selectAllButton"><i class="bi bi-check2-square"></i>Select</button>
+</form>
+
+<div class="task-table" id="taskTable">
+  <div class="task-table-head">
+    <div></div>
+    <div>Task</div>
+    <div>Category</div>
+    <div>Priority</div>
+    <div>Due</div>
+    <div></div>
+  </div>
+
+  {% for task in tasks %}
+    <div class="task-table-row {% if task.status == 'COMPLETED' %}completed{% endif %}"
+         data-task-id="{{ task.pk }}"
+         data-title="{{ task.title|escape }}"
+         data-description="{{ task.description|escape }}"
+         data-category="{% if task.category %}{{ task.category.pk }}{% endif %}"
+         data-priority="{{ task.priority }}"
+         data-due="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
+         data-tags="{% for tag in task.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+      <button class="task-select" type="button" aria-label="Select {{ task.title }}"><i class="bi bi-check"></i></button>
+      <div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="task-check {% if task.status == 'COMPLETED' %}done{% endif %}" type="button"
+                  aria-label="Complete {{ task.title }}">
+            <i class="bi bi-check"></i>
+          </button>
+          <div>
+            <div class="task-title">{{ task.title }}</div>
+            <div class="task-meta">
+              {% for tag in task.tags.all %}<span class="tag">#{{ tag.name }}</span>{% endfor %}
+            </div>
+          </div>
         </div>
+      </div>
+      <div>{% if task.category %}<span class="tag cat">{{ task.category.name }}</span>{% else %}—{% endif %}</div>
+      <div>
+        <span class="tag priority-{% if task.priority == 'MEDIUM' %}med{% else %}{{ task.priority|lower }}{% endif %}">
+          {{ task.get_priority_display }}
+        </span>
+      </div>
+      <div class="task-due">
+        {% if task.due_date %}
+          {% if task.due_date|date:'Y-m-d' == today|date:'Y-m-d' %}Today{% else %}{{ task.due_date|date:'M j' }}{% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="task-actions">
+        <button class="task-action-btn edit-task" type="button" title="Edit"><i class="bi bi-pencil"></i></button>
+        <button class="task-action-btn delete-task" type="button" title="Delete"><i class="bi bi-trash"></i></button>
+      </div>
     </div>
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-pending"><i class="bi bi-hourglass-split"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Pending</div>
-            <div class="stat-value" id="statPending">{{ pending_tasks }}</div>
-            <div class="stat-sub">To be done</div>
-        </div>
+  {% empty %}
+    <div class="empty" style="padding:42px">
+      <h4>No tasks found</h4>
+      <p>Create a task to get started.</p>
     </div>
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-progress"><i class="bi bi-arrow-repeat"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">In Progress</div>
-            <div class="stat-value" id="statProgress">{{ in_progress_tasks }}</div>
-            <div class="stat-sub">Keep going</div>
-        </div>
-    </div>
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-completed"><i class="bi bi-check-circle"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Completed</div>
-            <div class="stat-value" id="statCompleted">{{ completed_tasks }}</div>
-            <div class="stat-sub">Great job!</div>
-        </div>
-    </div>
-    <div class="stat-card glass card-pad">
-        <div class="stat-icon stat-overdue"><i class="bi bi-exclamation-triangle"></i></div>
-        <div class="stat-info">
-            <div class="stat-label">Overdue</div>
-            <div class="stat-value" id="statOverdue">{{ overdue_tasks }}</div>
-            <div class="stat-sub">Need attention</div>
-        </div>
-    </div>
+  {% endfor %}
 </div>
 
-<!-- Main Content Grid -->
-<div class="tasks-layout">
-    <!-- Task List Section -->
-    <div class="tasks-main glass card-pad">
-        <div class="section-header">
-            <h2 class="section-title">All Tasks</h2>
-            <div class="section-actions">
-                <button class="btn-secondary" id="filterToggle">
-                    <i class="bi bi-funnel"></i> Filter
-                </button>
-            </div>
-        </div>
-
-        <!-- Filter Panel -->
-        <div class="filter-panel" id="filterPanel" style="display: none;">
-            <form method="get" class="filter-form">
-                {% if request.GET.search %}
-                    <input type="hidden" name="search" value="{{ request.GET.search }}">
-                {% endif %}
-                
-                <!-- Status Filter -->
-                <div class="form-group">
-                    <label>Status</label>
-                    <div class="custom-select-wrapper">
-                        <div class="custom-select">
-                            <div class="custom-select__trigger">
-                                <span>{% if request.GET.status == 'PENDING' %}Pending{% elif request.GET.status == 'IN_PROGRESS' %}In Progress{% elif request.GET.status == 'COMPLETED' %}Completed{% else %}All Statuses{% endif %}</span>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="custom-options">
-                                <span class="custom-option" data-value="">All Statuses</span>
-                                <span class="custom-option" data-value="PENDING">Pending</span>
-                                <span class="custom-option" data-value="IN_PROGRESS">In Progress</span>
-                                <span class="custom-option" data-value="COMPLETED">Completed</span>
-                            </div>
-                            <input type="hidden" name="status" value="{{ request.GET.status }}">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Priority Filter -->
-                <div class="form-group">
-                    <label>Priority</label>
-                    <div class="custom-select-wrapper">
-                        <div class="custom-select">
-                            <div class="custom-select__trigger">
-                                <span>{% if request.GET.priority == 'HIGH' %}High{% elif request.GET.priority == 'MEDIUM' %}Medium{% elif request.GET.priority == 'LOW' %}Low{% else %}All Priorities{% endif %}</span>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="custom-options">
-                                <span class="custom-option" data-value="">All Priorities</span>
-                                <span class="custom-option" data-value="HIGH">High</span>
-                                <span class="custom-option" data-value="MEDIUM">Medium</span>
-                                <span class="custom-option" data-value="LOW">Low</span>
-                            </div>
-                            <input type="hidden" name="priority" value="{{ request.GET.priority }}">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Category Filter -->
-                <div class="form-group">
-                    <label>Category</label>
-                    <div class="custom-select-wrapper">
-                        <div class="custom-select">
-                            <div class="custom-select__trigger">
-                                <span>{% if request.GET.category %}{% for cat in categories %}{% if cat.id|stringformat:"s" == request.GET.category %}{{ cat.name }}{% endif %}{% endfor %}{% else %}All Categories{% endif %}</span>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="custom-options">
-                                <span class="custom-option" data-value="">All Categories</span>
-                                {% for category in categories %}
-                                    <span class="custom-option" data-value="{{ category.id }}">{{ category.name }}</span>
-                                {% endfor %}
-                            </div>
-                            <input type="hidden" name="category" value="{{ request.GET.category }}">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Apply Button -->
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button type="submit" class="btn-primary">Apply</button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Task Table -->
-        <div class="task-table-wrapper">
-            <div class="task-table-header">
-                <div class="th-check"></div>
-                <div class="th-task">Task</div>
-                <div class="th-priority">Priority</div>
-                <div class="th-due">Due Date</div>
-                <div class="th-status">Status</div>
-                <div class="th-actions"></div>
-            </div>
-            <div class="task-table-body">
-                {% for task in tasks %}
-                <div class="task-row-item" data-task-id="{{ task.id }}">
-                    <div class="td-check">
-                        <button type="button"
-                                class="task-check {% if task.status == 'COMPLETED' %}done{% endif %}"
-                                data-task-id="{{ task.id }}">
-                            {% if task.status == 'COMPLETED' %}
-                                <i class="bi bi-check"></i>
-                            {% endif %}
-                        </button>
-                    </div>
-                    <div class="td-task">
-                        <span class="task-title {% if task.status == 'COMPLETED' %}task-done{% endif %}">{{ task.title }}</span>
-                        {% if task.category %}
-                            <span class="category-tag" style="background: {{ task.category.color }}20; color: {{ task.category.color }}; border-color: {{ task.category.color }}40;">
-                                {{ task.category.name }}
-                            </span>
-                        {% endif %}
-                        {% if task.subtask_progress %}
-                            <span class="subtask-tag">{{ task.subtask_progress }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="td-priority">
-                        <span class="priority-badge priority-{{ task.priority|lower }}">
-                            <span class="priority-dot"></span>
-                            {{ task.get_priority_display }}
-                        </span>
-                    </div>
-                    <div class="td-due">
-                        {% if task.due_date %}
-                            <span class="due-date">{{ task.due_date|date:"M d, h:i A" }}</span>
-                        {% else %}
-                            <span class="due-date text-muted">No date</span>
-                        {% endif %}
-                    </div>
-                    <div class="td-status">
-                        <span class="status-badge status-{{ task.status|lower }}">
-                            {{ task.get_status_display }}
-                        </span>
-                    </div>
-                    <div class="td-actions">
-                        <div class="dropdown">
-                            <button class="icon-btn-plain dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots-vertical"></i>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'tasks:task_update' task.pk %}">
-                                        <i class="bi bi-pencil me-2"></i> Edit
-                                    </a>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item text-danger" 
-                                            onclick="showDeleteModal('{% url 'tasks:task_delete' task.pk %}', '{{ task.title|escapejs }}')"
-                                            type="button">
-                                        <i class="bi bi-trash me-2"></i> Delete
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="empty-state">
-                    <i class="bi bi-clipboard-x"></i>
-                    <p class="empty-text">No tasks found. Create your first task!</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Sidebar -->
-    <div class="tasks-sidebar">
-        <!-- Priority Chart -->
-        <div class="glass card-pad">
-            <h3 class="card-title">Tasks by Priority</h3>
-            <div class="donut-chart-wrap">
-                <canvas id="priorityChart"></canvas>
-                <div class="chart-center">
-                    <div class="chart-total">{{ total_tasks }}</div>
-                    <div class="chart-label">Total</div>
-                </div>
-            </div>
-            <div class="chart-legend">
-                <div class="legend-item">
-                    <span class="legend-dot" style="background: #E77A7A;"></span>
-                    <span class="legend-label">High</span>
-                    <span class="legend-value">{{ high_priority }} ({{ high_priority_percent }}%)</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-dot" style="background: var(--tertiary);"></span>
-                    <span class="legend-label">Medium</span>
-                    <span class="legend-value">{{ medium_priority }} ({{ medium_priority_percent }}%)</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-dot" style="background: #63C989;"></span>
-                    <span class="legend-label">Low</span>
-                    <span class="legend-value">{{ low_priority }} ({{ low_priority_percent }}%)</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Upcoming Deadlines -->
-        <div class="glass card-pad">
-            <div class="card-header-row">
-                <h3 class="card-title">Upcoming Deadlines</h3>
-                <a href="#" class="view-link">View all <i class="bi bi-arrow-right"></i></a>
-            </div>
-            <div class="deadlines-list">
-                {% for task in upcoming_tasks %}
-                <div class="deadline-item">
-                    <div class="deadline-check"><i class="bi bi-circle"></i></div>
-                    <div class="deadline-info">
-                        <div class="deadline-title">{{ task.title }}</div>
-                        <div class="deadline-date">{{ task.due_date|date:"M d, h:i A" }}</div>
-                    </div>
-                    <div class="deadline-icon"><i class="bi bi-calendar-event"></i></div>
-                </div>
-                {% empty %}
-                <p class="empty-text">No upcoming deadlines</p>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
+<div class="bulk-bar" id="bulkBar">
+  <span><strong id="selectedCount">0</strong> selected</span>
+  <button class="btn btn-ghost btn-sm" id="bulkComplete"><i class="bi bi-check-lg"></i>Complete</button>
+  <button class="btn btn-danger-ghost btn-sm" id="bulkDelete">Delete</button>
+  <button class="btn btn-ghost btn-sm" id="clearSelection">Cancel</button>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="background: var(--surface); border: 1px solid var(--border-subtle); border-radius: var(--radius); backdrop-filter: var(--blur);">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-subtle); padding: 20px 24px;">
-                <h5 class="modal-title" id="deleteModalLabel" style="color: var(--text); font-size: 1.1rem; font-weight: 650; margin: 0;">Confirm Delete</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" style="padding: 24px; color: var(--text-secondary); font-size: 0.9rem;">
-                <p id="deleteModalText" style="margin: 0;"></p>
-            </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-subtle); padding: 16px 24px; gap: 10px;">
-                <button type="button" class="btn-secondary" data-bs-dismiss="modal" style="margin: 0;">Cancel</button>
-                <form id="deleteModalForm" method="post" style="display: inline; margin: 0;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-danger" style="margin: 0;">Delete</button>
-                </form>
-            </div>
-        </div>
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="taskModalTitle">New Task</div>
+      <button class="icon-btn" type="button" id="closeTaskModal"><i class="bi bi-x-lg"></i></button>
     </div>
+    <form id="taskForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input class="form-input" name="title" required placeholder="What needs to be done?">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" name="category">
+              <option value="">No category</option>
+              {% for category in categories %}
+                <option value="{{ category.pk }}">{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" name="priority">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM" selected>Medium</option>
+              <option value="HIGH">High</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due date</label>
+          <input class="form-input" name="due_date" type="date" value="{% now 'Y-m-d' %}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags (comma separated)</label>
+          <input class="form-input" name="tags" placeholder="design, urgent, review">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-textarea" name="description" placeholder="Optional details"></textarea>
+        </div>
+        <div class="form-error" id="taskFormError" hidden></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" type="button" id="cancelTaskModal">Cancel</button>
+        <button class="btn btn-primary" type="submit" id="saveTaskButton">Create task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteTaskModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="deleteTaskTitle">Delete this task?</div>
+      <button class="icon-btn" type="button" id="closeDeleteModal"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-1)" id="deleteTaskMessage"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" type="button" id="cancelDelete">Cancel</button>
+      <button class="btn btn-danger-ghost" type="button" id="confirmDelete" style="background:var(--danger);color:#fff;border-color:var(--danger)">Confirm</button>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-
 <script>
-    const priorityData = {
-        high: {{ high_priority }},
-        medium: {{ medium_priority }},
-        low: {{ low_priority }}
-    };
-    const csrfToken = '{{ csrf_token }}';
+const taskCsrf = '{{ csrf_token }}',
+      taskTable = document.getElementById('taskTable'),
+      taskModal = document.getElementById('taskModal'),
+      taskForm = document.getElementById('taskForm'),
+      selected = new Set(),
+      deleteTaskModal = document.getElementById('deleteTaskModal');
+let editingId = null, deleteId = null, deleteRow = null, deleteMode = 'single';
 
-    function showDeleteModal(url, taskName) {
-        const modalTextEl = document.getElementById('deleteModalText');
-        const modalFormEl = document.getElementById('deleteModalForm');
-        const deleteModalEl = document.getElementById('deleteModal');
-        
-        if (!modalTextEl || !modalFormEl || !deleteModalEl) return;
-        
-        modalTextEl.textContent = 'Are you sure you want to delete "' + taskName + '"? This action cannot be undone.';
-        modalFormEl.setAttribute('action', url);
-        
-        let deleteModal = bootstrap.Modal.getInstance(deleteModalEl);
-        if (!deleteModal) deleteModal = new bootstrap.Modal(deleteModalEl);
-        deleteModal.show();
-    }
+function openTaskModal(row) {
+  editingId = row?.dataset.taskId || null;
+  taskForm.reset();
+  document.getElementById('taskFormError').hidden = true;
+  document.getElementById('taskModalTitle').textContent = editingId ? 'Edit Task' : 'New Task';
+  document.getElementById('saveTaskButton').textContent = editingId ? 'Save changes' : 'Create task';
+  if (row) {
+    taskForm.title.value = row.dataset.title;
+    taskForm.description.value = row.dataset.description;
+    taskForm.category.value = row.dataset.category;
+    taskForm.priority.value = row.dataset.priority;
+    taskForm.due_date.value = row.dataset.due;
+    taskForm.tags.value = row.dataset.tags;
+  } else {
+    taskForm.due_date.value = '{% now "Y-m-d" %}';
+  }
+  taskModal.classList.add('show');
+  taskForm.title.focus();
+}
+
+function closeTaskModal() { taskModal.classList.remove('show'); }
+
+document.getElementById('newTaskButton').onclick = () => openTaskModal();
+document.getElementById('closeTaskModal').onclick = closeTaskModal;
+document.getElementById('cancelTaskModal').onclick = closeTaskModal;
+taskModal.onclick = e => { if (e.target === taskModal) closeTaskModal(); };
+
+function openDeleteModal(title, message, mode, id = null, row = null) {
+  deleteMode = mode;
+  deleteId = id;
+  deleteRow = row;
+  document.getElementById('deleteTaskTitle').textContent = title;
+  document.getElementById('deleteTaskMessage').textContent = message;
+  deleteTaskModal.classList.add('show');
+}
+
+function closeDeleteModal() {
+  deleteTaskModal.classList.remove('show');
+  deleteId = null;
+  deleteRow = null;
+  deleteMode = 'single';
+}
+document.getElementById('closeDeleteModal').onclick = closeDeleteModal;
+document.getElementById('cancelDelete').onclick = closeDeleteModal;
+deleteTaskModal.onclick = e => { if (e.target === deleteTaskModal) closeDeleteModal(); };
+
+taskForm.onsubmit = async e => {
+  e.preventDefault();
+  const url = editingId ? `/tasks/ajax/${editingId}/update/` : '{% url "tasks:ajax_task_create" %}',
+        response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': taskCsrf }, body: new FormData(taskForm) }),
+        data = await response.json();
+  if (!response.ok) {
+    const error = document.getElementById('taskFormError');
+    error.textContent = data.error || 'Could not save task.';
+    error.hidden = false;
+    return;
+  }
+  location.reload();
+};
+
+async function post(url, data) {
+  return fetch(url, { method: 'POST', headers: { 'X-CSRFToken': taskCsrf }, body: data });
+}
+
+taskTable.addEventListener('click', async e => {
+  const row = e.target.closest('.task-table-row');
+  if (!row) return;
+  const id = row.dataset.taskId;
+
+  if (e.target.closest('.task-select')) {
+    selected.has(id) ? selected.delete(id) : selected.add(id);
+    row.querySelector('.task-select').classList.toggle('selected', selected.has(id));
+    updateBulk();
+    return;
+  }
+
+  if (e.target.closest('.edit-task')) return openTaskModal(row);
+
+  if (e.target.closest('.delete-task')) {
+    openDeleteModal('Delete this task?', `"${row.dataset.title}" will be permanently removed.`, 'single', id, row);
+    return;
+  }
+
+  if (e.target.closest('.task-check')) {
+    const r = await post(`/tasks/ajax/${id}/toggle/`, new FormData());
+    if (!r.ok) return;
+    const data = await r.json(), done = data.status === 'COMPLETED';
+    row.classList.toggle('completed', done);
+    row.querySelector('.task-check').classList.toggle('done', done);
+    done ? taskTable.append(row) : taskTable.insertBefore(row, taskTable.children[1]);
+  }
+});
+
+document.getElementById('confirmDelete').onclick = async () => {
+  if (deleteMode === 'bulk') { await bulk('delete'); return; }
+  if (!deleteId) return;
+  const r = await post(`/tasks/ajax/${deleteId}/delete/`, new FormData());
+  if (r.ok) {
+    deleteRow.remove();
+    closeDeleteModal();
+  }
+};
+
+function updateBulk() {
+  document.getElementById('selectedCount').textContent = selected.size;
+  document.getElementById('bulkBar').classList.toggle('show', selected.size > 0);
+}
+
+function clearSelection() {
+  selected.clear();
+  document.querySelectorAll('.task-select').forEach(x => x.classList.remove('selected'));
+  updateBulk();
+}
+
+const selectButton = document.getElementById('selectAllButton');
+
+function setSelectionMode(enabled) {
+  taskTable.classList.toggle('selection-mode', enabled);
+  selectButton.classList.toggle('active', enabled);
+  selectButton.setAttribute('aria-pressed', enabled);
+  selectButton.innerHTML = enabled ? '<i class="bi bi-x-lg"></i>Cancel' : '<i class="bi bi-check2-square"></i>Select';
+  if (!enabled) clearSelection();
+}
+
+selectButton.onclick = () => setSelectionMode(!taskTable.classList.contains('selection-mode'));
+document.getElementById('clearSelection').onclick = () => setSelectionMode(false);
+
+async function bulk(action) {
+  if (!selected.size) return;
+  const data = new FormData();
+  data.append('action', action);
+  selected.forEach(id => data.append('task_ids[]', id));
+  const response = await post('{% url "tasks:ajax_bulk_tasks" %}', data);
+  if (response.ok) {
+    closeDeleteModal();
+    location.reload();
+  }
+}
+
+document.getElementById('bulkComplete').onclick = () => bulk('complete');
+document.getElementById('bulkDelete').onclick = () => openDeleteModal(
+  `Delete ${selected.size} task${selected.size === 1 ? '' : 's'}?`,
+  'This action cannot be undone.',
+  'bulk'
+);
 </script>
-
-<script src="{% static 'js/task_list.js' %}"></script>
 {% endblock %}
