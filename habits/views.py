@@ -4,7 +4,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.db.models import Count
 from .models import Habit, HabitLog
 from .forms import HabitForm
 
@@ -27,6 +28,27 @@ def habit_list(request):
     daily_count = all_habits.filter(frequency='DAILY').count()
     weekly_count = all_habits.filter(frequency='WEEKLY').count()
 
+    start_date = today - timedelta(days=89)
+    completion_counts = {
+        item['date']: item['count']
+        for item in HabitLog.objects.filter(
+            habit__user=request.user,
+            habit__is_active=True,
+            completed=True,
+            date__gte=start_date,
+            date__lte=today,
+        ).values('date').annotate(count=Count('id'))
+    }
+    activity_days = []
+    for offset in range(89, -1, -1):
+        day = today - timedelta(days=offset)
+        count = completion_counts.get(day, 0)
+        if not total_habits or not count:
+            level = 0
+        else:
+            level = min(4, max(1, round((count / total_habits) * 4)))
+        activity_days.append({'date': day, 'count': count, 'level': level})
+
     habits = all_habits
     frequency_filter = request.GET.get('frequency')
     if frequency_filter:
@@ -41,6 +63,8 @@ def habit_list(request):
         'best_streak': best_streak,
         'daily_count': daily_count,
         'weekly_count': weekly_count,
+        'activity_days': activity_days,
+        'habit_categories': Habit.CATEGORY_CHOICES,
     }
     return render(request, 'habits/habit_list.html', context)
 
@@ -149,6 +173,8 @@ def ajax_toggle_habit(request, pk):
     )
     active_streaks = sum(1 for h in habits if h.current_streak > 0)
     best_streak = max((h.longest_streak for h in habits), default=0)
+    activity_count = HabitLog.objects.filter(habit__user=request.user, date=today, completed=True).count()
+    activity_level = min(4, max(1, round((activity_count / habits.count()) * 4))) if habits.exists() and activity_count else 0
     
     return JsonResponse({
         'success': True,
@@ -159,7 +185,69 @@ def ajax_toggle_habit(request, pk):
         'active_streaks': active_streaks,
         'best_streak': best_streak,
         'completion_rate': habit.completion_rate(),
+        'activity_count': activity_count,
+        'activity_level': activity_level,
     })
+
+
+def save_habit_from_request(request, habit=None):
+    name = request.POST.get('name', '').strip()
+    if not name:
+        return None, 'Habit name is required.'
+
+    category = request.POST.get('category', 'other')
+    if category not in dict(Habit.CATEGORY_CHOICES):
+        category = 'other'
+    frequency = request.POST.get('frequency', 'DAILY')
+    if frequency not in dict(Habit.FREQUENCY_CHOICES):
+        frequency = 'DAILY'
+
+    target_days = []
+    for value in request.POST.get('target_days', '').split(','):
+        value = value.strip()
+        if value.isdigit() and 1 <= int(value) <= 7:
+            target_days.append(int(value))
+
+    habit = habit or Habit(user=request.user)
+    habit.name = name
+    habit.category = category
+    habit.frequency = frequency
+    habit.target_days = target_days
+    if habit.pk:
+        habit.icon = ''
+    habit.save()
+    return habit, None
+
+
+@login_required
+def ajax_habit_create(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+    habit, error = save_habit_from_request(request)
+    if error:
+        return JsonResponse({'error': error}, status=400)
+    return JsonResponse({'success': True, 'habit_id': habit.pk})
+
+
+@login_required
+def ajax_habit_update(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+    habit = get_object_or_404(Habit, pk=pk, user=request.user)
+    habit, error = save_habit_from_request(request, habit)
+    if error:
+        return JsonResponse({'error': error}, status=400)
+    return JsonResponse({'success': True, 'habit_id': habit.pk})
+
+
+@login_required
+def ajax_habit_delete(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+    habit = get_object_or_404(Habit, pk=pk, user=request.user)
+    habit.is_active = False
+    habit.save(update_fields=['is_active'])
+    return JsonResponse({'success': True})
 
 
 @login_required

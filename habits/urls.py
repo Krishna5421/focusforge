@@ -11,4 +11,7 @@ urlpatterns = [
     path('ajax/<int:pk>/toggle/', views.ajax_toggle_habit, name='ajax_toggle_habit'),
     path('api/completion/<str:date_str>/', views.api_completion_status, name='api_completion_status'),
     path('<int:pk>/delete/', views.habit_delete, name='habit_delete'),
+    path('ajax/create/', views.ajax_habit_create, name='ajax_habit_create'),
+    path('ajax/<int:pk>/update/', views.ajax_habit_update, name='ajax_habit_update'),
+    path('ajax/<int:pk>/delete/', views.ajax_habit_delete, name='ajax_habit_delete'),
 ]
