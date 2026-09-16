@@ -124,6 +124,7 @@
       }
     } catch {
       add('assistant', 'Unable to reach the assistant right now. Please try again.');
+      window.FocusForge?.toast('Unable to reach the assistant right now. Please try again.', 'error');
     } finally {
       send.disabled = false;
       send.innerHTML = '<i class="bi bi-send-fill"></i>';

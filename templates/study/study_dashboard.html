@@ -250,7 +250,9 @@
         activeFileButton.hidden = false;
         return;
       }
-    } catch (error) {}
+    } catch (error) {
+      window.FocusForge?.toast('Unable to load the study file from this browser.', 'warning');
+    }
     if (activeFileMessage) {
       activeFileMessage.textContent = 'This local file is not available in this browser. Select it again to view it.';
       activeFileMessage.hidden = false;
@@ -309,6 +311,7 @@
       location.reload();
     } catch (err) {
       document.getElementById('setupMessage').textContent = err.message;
+      window.FocusForge?.apiError(err, 'Unable to start the study session.');
     }
   };
 

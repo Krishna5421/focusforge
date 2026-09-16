@@ -157,7 +157,7 @@
         state = 'idle';
         render();
         if (sessionId) {
-          try { await saveSession('COMPLETED'); window.location.reload(); } catch (error) { alert(error.message); }
+          try { await saveSession('COMPLETED'); window.location.reload(); } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete this focus session.'); }
         }
       } else render();
     }, 1000);
@@ -183,14 +183,14 @@
       }
       if (sessionId && state === 'paused') await saveSession('RUNNING');
       startClock();
-    } catch (error) { alert(error.message); }
+    } catch (error) { window.FocusForge?.apiError(error, 'Unable to start the focus session.'); }
   });
 
   pauseButton.addEventListener('click', async () => {
     if (state !== 'running') return;
     window.clearInterval(timer); timer = null;
     try { await saveSession('PAUSED'); state = 'paused'; render(); }
-    catch (error) { alert(error.message); startClock(); }
+    catch (error) { window.FocusForge?.apiError(error, 'Unable to pause the focus session.'); startClock(); }
   });
 
   resetButton.addEventListener('click', async () => {
@@ -198,7 +198,7 @@
     timer = null;
     try {
       if (sessionId) { await saveSession('STOPPED'); window.location.reload(); return; }
-    } catch (error) { alert(error.message); return; }
+    } catch (error) { window.FocusForge?.apiError(error, 'Unable to stop the focus session.'); return; }
     state = 'idle'; seconds = modes[mode].seconds; render();
   });
 
@@ -210,7 +210,8 @@
       const payload = await post('{% url "pomodoro:update_daily_goal" %}', data);
       message.textContent = `Daily target saved: ${payload.daily_goal} sessions.`;
       document.querySelector('.today-stats small').textContent = ` / ${payload.daily_goal}`;
-    } catch (error) { message.textContent = error.message; }
+      window.FocusForge?.toast('Daily focus target saved successfully.', 'success');
+    } catch (error) { message.textContent = error.message; window.FocusForge?.apiError(error, 'Unable to save the daily target.'); }
   });
   render();
 })();

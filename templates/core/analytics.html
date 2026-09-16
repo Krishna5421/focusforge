@@ -259,6 +259,7 @@
       render(await response.json());
     } catch {
       Object.values(charts).forEach(chart => chart.destroy());
+      window.FocusForge?.toast('Unable to load analytics right now. Please try again.', 'error');
     }
   }
 

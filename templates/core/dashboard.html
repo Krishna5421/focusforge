@@ -458,7 +458,7 @@
       button.classList.toggle('done', done);
       await refreshSummary();
     } catch (error) {
-      window.alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to update the task. Please try again.');
     } finally {
       button.disabled = false;
     }
@@ -479,7 +479,7 @@
       if (best) best.textContent = `Best: ${data.longest_streak}d`;
       await refreshSummary();
     } catch (error) {
-      window.alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to update the habit. Please try again.');
     } finally {
       button.disabled = false;
     }
@@ -540,7 +540,7 @@
         }
       }, 1000);
     } catch (error) {
-      alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to update the focus session. Please try again.');
     }
   }
 
@@ -553,7 +553,7 @@
       pauseButton.onclick = resume;
       render();
     } catch (error) {
-      alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to pause the focus session. Please try again.');
     }
   }
 
@@ -576,7 +576,7 @@
         }
       }, 1000);
     } catch (error) {
-      alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to resume the focus session. Please try again.');
     }
   }
 
@@ -588,7 +588,7 @@
       await post(`/pomodoro/${sessionId}/update/`, { status: 'STOPPED', focus_seconds: 1500 - seconds });
       window.location.reload();
     } catch (error) {
-      alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to end the focus session. Please try again.');
     }
   }
 
