@@ -64,9 +64,10 @@
         item.querySelector('.notif-unread-dot')?.remove();
       });
       button?.remove();
+      window.FocusForge?.toast('All notifications marked as read.', 'success');
     } catch (error) {
       button.disabled = false;
-      window.alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to mark notifications as read.');
     }
   });
 
@@ -83,9 +84,10 @@
       document.getElementById('notificationsList').innerHTML = '<li class="notifications-empty"><i class="bi bi-bell"></i><strong>You’re all caught up</strong><span>Notifications about your productivity activity will appear here.</span></li>';
       document.getElementById('markAllNotifications')?.remove();
       clearButton.remove();
+      window.FocusForge?.toast('Notifications cleared successfully.', 'success');
     } catch (error) {
       clearButton.disabled = false;
-      window.alert(error.message);
+      window.FocusForge?.apiError(error, 'Unable to clear notifications.');
     }
   });
 })();

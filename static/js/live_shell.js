@@ -38,36 +38,6 @@
     if (fallback) fallback.hidden = false;
   }, { once: true }));
 
-  document.querySelectorAll('.toast').forEach(toast => {
-    window.setTimeout(() => {
-      toast.classList.add('hide');
-      window.setTimeout(() => toast.remove(), 240);
-    }, 3500);
-  });
-
-  const toastContainer = () => {
-    let container = document.querySelector('.toast-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.className = 'toast-container';
-      container.setAttribute('aria-live', 'polite');
-      document.body.appendChild(container);
-    }
-    return container;
-  };
-
-  const toast = (message, type = 'success') => {
-    const item = document.createElement('div');
-    item.className = `toast ${type}`;
-    const icon = type === 'error' ? 'bi-exclamation-circle' : type === 'info' ? 'bi-info-circle' : 'bi-check-lg';
-    item.innerHTML = `<span class="toast-icon"><i class="bi ${icon}"></i></span><span>${message}</span>`;
-    toastContainer().appendChild(item);
-    window.setTimeout(() => {
-      item.classList.add('hide');
-      window.setTimeout(() => item.remove(), 240);
-    }, 3500);
-  };
-
   const xpPopup = amount => {
     if (!amount) return;
     const popup = document.createElement('div');
@@ -111,7 +81,7 @@
     return response;
   };
 
-  window.FocusForge = { toast, xpPopup, refreshShell: () => refreshShell(true) };
+  window.FocusForge = Object.assign(window.FocusForge || {}, { xpPopup, refreshShell: () => refreshShell(true) });
   refreshShell();
   window.setInterval(refreshShell, 30000);
 })();
