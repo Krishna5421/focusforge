@@ -9,6 +9,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from tasks.models import Task
+from habits.models import Habit, HabitLog
 from .models import PasswordResetOTP
 
 
@@ -41,6 +42,35 @@ class ProfileTests(TestCase):
         data = json.loads(response.content)
         self.assertEqual(data['profile']['username'], 'profile-user')
         self.assertEqual([task['title'] for task in data['tasks']], ['My task'])
+
+    def test_profile_shows_weekly_consistency_from_tasks_and_habits(self):
+        today = timezone.localdate()
+        Task.objects.create(user=self.user, title='Finished', due_date=timezone.now(), status='COMPLETED')
+        Task.objects.create(user=self.user, title='Pending', due_date=timezone.now())
+        habit = Habit.objects.create(user=self.user, name='Read', frequency='DAILY')
+        HabitLog.objects.create(habit=habit, date=today, completed=True)
+
+        response = self.client.get(reverse('accounts:profile'))
+
+        self.assertEqual(response.context['weekly_consistency_score'], 67)
+        self.assertContains(response, 'Weekly consistency')
+        self.assertContains(response, '67%')
+
+
+class AuthenticationValidationTests(TestCase):
+    def test_register_shows_a_field_error_for_a_username_starting_with_underscore(self):
+        response = self.client.post(reverse('accounts:register'), {
+            'username': '_not_allowed',
+            'first_name': 'Krishna',
+            'last_name': 'Kumar',
+            'email': 'krishna@example.com',
+            'password1': 'secure-password-123',
+            'password2': 'secure-password-123',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Username cannot start with an underscore.')
+        self.assertContains(response, 'has-error')
 
 
 class PasswordResetOTPTests(TestCase):

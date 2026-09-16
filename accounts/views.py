@@ -19,6 +19,39 @@ from .forms import (RegisterForm, StyledLoginForm, ProfileForm, UserUpdateForm,
 from .models import PasswordResetOTP
 
 
+def weekly_consistency_score(user, today=None):
+    """Return this week's completed task and scheduled-habit percentage."""
+    today = today or timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+
+    weekly_tasks = Task.objects.filter(user=user, due_date__date__range=(week_start, today))
+    expected_items = weekly_tasks.count()
+    completed_items = weekly_tasks.filter(status='COMPLETED').count()
+
+    habits = Habit.objects.filter(user=user, is_active=True, created_at__date__lte=today).prefetch_related('logs')
+    for habit in habits:
+        first_day = max(week_start, habit.created_at.date())
+        completed_dates = set(habit.logs.filter(
+            date__range=(first_day, today), completed=True,
+        ).values_list('date', flat=True))
+
+        if habit.frequency == 'WEEKLY' and not habit.target_days:
+            expected_items += 1
+            completed_items += int(bool(completed_dates))
+            continue
+
+        target_days = habit.target_days if habit.frequency == 'WEEKLY' else range(1, 8)
+        scheduled_dates = {
+            first_day + timedelta(days=offset)
+            for offset in range((today - first_day).days + 1)
+            if (first_day + timedelta(days=offset)).isoweekday() in target_days
+        }
+        expected_items += len(scheduled_dates)
+        completed_items += len(completed_dates & scheduled_dates)
+
+    return round((completed_items / expected_items) * 100) if expected_items else 0
+
+
 def register_view(request):
     if request.user.is_authenticated:
         return redirect('core:dashboard')
@@ -145,7 +178,10 @@ def password_reset_new_password(request):
 
 @login_required
 def profile_view(request):
-    return render(request, 'accounts/profile.html', {'profile': request.user.profile})
+    return render(request, 'accounts/profile.html', {
+        'profile': request.user.profile,
+        'weekly_consistency_score': weekly_consistency_score(request.user),
+    })
 
 
 @login_required

@@ -208,6 +208,21 @@ body {
     box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
 }
 
+.input-wrap.has-error input {
+    border-color: #f87171;
+}
+
+.input-wrap.has-error input:focus {
+    box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.16);
+}
+
+.field-error {
+    color: #fca5a5;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    margin: 6px 0 0;
+}
+
 .toggle-password {
     position: absolute;
     right: 14px;
@@ -603,4 +618,9 @@ body {
 
 .reset-back:hover {
   color: #f5a524;
+}
+
+@media (max-width: 768px) {
+    .auth-page { min-height: 100dvh; overflow-x: clip; overflow-y: auto; }
+    .reset-page { min-height: 100dvh; overflow-x: clip; overflow-y: auto; }
 }

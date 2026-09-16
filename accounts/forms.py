@@ -16,6 +16,14 @@ class RegisterForm(UserCreationForm):
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'password1', 'password2']
 
+    def clean_username(self):
+        username = self.cleaned_data['username'].strip()
+        if username.startswith('_'):
+            raise forms.ValidationError('Username cannot start with an underscore.')
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError('This username is already in use. Please choose another one.')
+        return username
+
 
 class StyledLoginForm(AuthenticationForm):
     username = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Username'}))
@@ -27,6 +35,10 @@ class ProfileForm(forms.ModelForm):
         model = Profile
         fields = ['bio', 'profile_picture']
         widgets = {
+            'bio': forms.Textarea(attrs={
+                'rows': 4,
+                'placeholder': 'Tell us a little about yourself.',
+            }),
             'profile_picture': forms.ClearableFileInput(attrs={'accept': 'image/jpeg,image/png,image/webp'}),
         }
 
