@@ -301,6 +301,8 @@ a {
   font-weight: 400;
 }
 .topbar-spacer { flex: 1; }
+.topbar-title-group { min-width: 0; }
+.topbar-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 10px; margin-left: auto; min-width: 0; }
 .search-trigger {
   display: flex;
   align-items: center;
@@ -313,6 +315,7 @@ a {
   font-size: 13px;
   min-width: 260px;
   transition: border-color .15s var(--ease), background .15s var(--ease);
+  margin-left: 0;
 }
 .search-trigger:hover { border-color: var(--border-strong); background: var(--bg-3); }
 .search-trigger input {
@@ -1485,7 +1488,7 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   font: inherit;
   outline: none;
 }
-.profile-edit-form textarea { min-height: 110px; resize: vertical; }
+.profile-edit-form textarea { min-height: 92px; resize: vertical; }
 .profile-edit-form input:focus, .profile-edit-form textarea:focus { border-color: var(--accent); }
 .profile-edit-form input[type=file] { color: var(--text-2); font-size: 12px; }
 .profile-edit-form input[type=file]::file-selector-button {
@@ -1596,4 +1599,71 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
 @media (max-width: 640px) {
   .task-table:not(.selection-mode) .task-table-head,
   .task-table:not(.selection-mode) .task-table-row { grid-template-columns: 1fr 80px; }
+}
+
+/* Mobile shell: allow document scrolling instead of trapping it in a 100vh pane. */
+@media (max-width: 900px) {
+  html, body { height: auto; min-height: 100dvh; overflow-x: clip; overflow-y: auto; }
+  body { overflow-y: auto; }
+  .app { height: auto; min-height: 100dvh; overflow: visible; width: 100%; }
+  .main { min-height: 100dvh; }
+  .content { flex: 0 0 auto; min-height: calc(100dvh - var(--topbar-h)); overflow: visible; padding-bottom: max(28px, env(safe-area-inset-bottom)); }
+  .page { max-width: 100%; min-width: 0; }
+  .topbar { align-items: center; height: auto; min-height: var(--topbar-h); padding: 10px 16px; }
+  .topbar-title-group { flex: 1; min-width: 0; }
+  .page-title, .page-title-sub { display: block; overflow-wrap: anywhere; }
+  .page-title-sub { margin-left: 0; margin-top: 1px; }
+  .topbar-actions { margin-left: 0; }
+  .search-trigger { flex: 1 1 180px; min-width: 0; }
+  img, video, canvas { max-width: 100%; }
+  table { display: block; max-width: 100%; overflow-x: auto; }
+  .modal-overlay { align-items: flex-start; overflow-y: auto; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
+  .modal { margin: auto; max-height: calc(100dvh - 24px); width: 100%; }
+}
+@media (max-width: 900px) {
+  .topbar { display: grid; gap: 8px; grid-template-columns: 36px minmax(0, 1fr) auto; grid-template-areas: "menu title actions"; }
+  .menu-toggle { grid-area: menu; }
+  .topbar-title-group { grid-area: title; }
+  .page-title-sub { display: none; }
+  .page-title { display: block; font-size: 16px; line-height: 36px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .search-trigger { flex: 1 1 180px; min-width: 120px; padding: 8px 12px; width: clamp(160px, 30vw, 325px); }
+  .search-trigger > i { flex: 0 0 auto; }
+  .search-trigger input { display: block; min-width: 0; position: static; width: 100%; }
+  .topbar-actions { display: flex; gap: 10px; grid-area: actions; justify-self: end; margin-left: 0; }
+  .topbar-actions .icon-btn { height: 38px; width: 38px; }
+  .content { padding: 16px 12px max(24px, env(safe-area-inset-bottom)); }
+  .form-row, .profile-edit-actions, .profile-actions { grid-template-columns: 1fr; flex-wrap: wrap; }
+  .profile-edit-actions { justify-content: stretch; }
+  .profile-edit-actions .btn, .profile-actions .btn { flex: 1 1 140px; }
+  .focus-history-scroll, .study-history-scroll, .dash-grid .task-list, .dash-grid-2 .habit-list, .dash-grid-2 .goal-list, .dash-grid-2 .study-list, .dash-grid-2 .deadline-list { max-height: none; overflow-y: visible; }
+  /* The Habits page can have a long daily list. Keep it usable without making
+     users scroll through the entire page before reaching the activity card. */
+  .mobile-habit-scroll { max-height: min(52dvh, 440px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .mobile-habit-scroll::-webkit-scrollbar { width: 6px; }
+  .mobile-habit-scroll::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 999px; }
+  .card-head { align-items: flex-start; flex-wrap: wrap; gap: 8px 12px; }
+  .task-item .task-actions { opacity: 1; }
+  .task-item, .habit-item, .study-item { min-width: 0; }
+  .task-title, .habit-name, .study-name, .goal-name { overflow-wrap: anywhere; }
+  .toolbar-search { flex: 1 1 180px; min-width: 0; }
+  .study-page-actions, .analytics-filters { flex-wrap: wrap; }
+  .study-file-row { flex-wrap: wrap; }
+  .study-file-row input { width: 100%; }
+  .bulk-bar { bottom: max(12px, env(safe-area-inset-bottom)); max-width: calc(100vw - 24px); }
+}
+@media (max-width: 479px) {
+  .topbar { gap: 6px; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-areas: "menu title actions"; padding: 8px 12px; }
+  .menu-toggle { height: 32px; width: 32px; }
+  .page-title { font-size: 15px; line-height: 32px; }
+  .topbar-actions { gap: 6px; justify-self: end; width: auto; }
+  .topbar-actions .icon-btn { height: 32px; width: 32px; }
+  .topbar-actions .icon-btn i { font-size: 16px; }
+  .search-trigger { flex: 0 1 clamp(72px, 23vw, 110px); min-width: 72px; padding: 6px 8px; width: clamp(72px, 23vw, 110px); }
+  .search-trigger input { font-size: 12px; }
+}
+@media (max-width: 359px) {
+  .topbar { gap: 4px; padding-left: 10px; padding-right: 10px; }
+  .topbar-actions { gap: 4px; }
+  .search-trigger { min-width: 64px; width: 64px; }
+  .search-trigger input::placeholder { color: transparent; }
 }

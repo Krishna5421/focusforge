@@ -84,11 +84,11 @@
   <div class="main">
     <header class="topbar">
       <button class="menu-toggle" id="menuToggle" aria-label="Menu"><i class="bi bi-list"></i></button>
-      <div>
+      <div class="topbar-title-group">
         <span class="page-title">{% block topbar_title %}FocusForge{% endblock %}</span>
         <span class="page-title-sub">{% block topbar_subtitle %}Your productivity workspace{% endblock %}</span>
       </div>
-      <div class="topbar-spacer"></div>
+      <div class="topbar-actions">
       <form class="search-trigger" action="{% url 'tasks:task_list' %}" method="get">
         <i class="bi bi-search"></i>
         <input name="search" placeholder="Search tasks, habits, goals…">
@@ -100,7 +100,8 @@
         <i class="bi bi-bell"></i>
         {% if sidebar_unread_notifications %}<span class="dot"></span>{% endif %}
       </a>
-      <a class="icon-btn" href="{% url 'accounts:profile' %}" title="Profile"><i class="bi bi-gear"></i></a>
+      <a class="icon-btn" href="{% url 'accounts:profile' %}" title="Profile settings" aria-label="Profile settings"><i class="bi bi-gear"></i></a>
+      </div>
     </header>
 
     <main class="content">
@@ -108,7 +109,7 @@
         {% if messages %}
           <div class="toast-container" aria-live="polite">
             {% for message in messages %}
-              <div class="toast {{ message.tags }}" role="status">{{ message }}</div>
+              <div class="toast {{ message.tags|default:'info' }}" data-toast-type="{{ message.tags|default:'info' }}">{{ message }}</div>
             {% endfor %}
           </div>
         {% endif %}
@@ -119,6 +120,8 @@
   </div>
 </div>
 
+<link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+<script src="{% static 'js/notifications.js' %}"></script>
 <script src="{% static 'js/live_shell.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
