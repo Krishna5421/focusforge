@@ -231,7 +231,7 @@ taskForm.onsubmit = async e => {
     error.hidden = false;
     return;
   }
-  location.reload();
+  window.FocusForge?.redirectWithToast(window.location.href, editingId ? 'Task updated successfully.' : 'Task added successfully.');
 };
 
 async function post(url, data) {
@@ -259,11 +259,12 @@ taskTable.addEventListener('click', async e => {
 
   if (e.target.closest('.task-check')) {
     const r = await post(`/tasks/ajax/${id}/toggle/`, new FormData());
-    if (!r.ok) return;
+    if (!r.ok) { window.FocusForge?.toast('Unable to update the task. Please try again.', 'error'); return; }
     const data = await r.json(), done = data.status === 'COMPLETED';
     row.classList.toggle('completed', done);
     row.querySelector('.task-check').classList.toggle('done', done);
     done ? taskTable.append(row) : taskTable.insertBefore(row, taskTable.children[1]);
+    window.FocusForge?.toast(done ? 'Task completed successfully.' : 'Task reopened.', done ? 'success' : 'info');
   }
 });
 
@@ -274,6 +275,9 @@ document.getElementById('confirmDelete').onclick = async () => {
   if (r.ok) {
     deleteRow.remove();
     closeDeleteModal();
+    window.FocusForge?.toast('Task deleted successfully.', 'success');
+  } else {
+    window.FocusForge?.toast('Unable to delete the task. Please try again.', 'error');
   }
 };
 
@@ -309,7 +313,9 @@ async function bulk(action) {
   const response = await post('{% url "tasks:ajax_bulk_tasks" %}', data);
   if (response.ok) {
     closeDeleteModal();
-    location.reload();
+    window.FocusForge?.redirectWithToast(window.location.href, action === 'delete' ? 'Tasks deleted successfully.' : 'Tasks updated successfully.');
+  } else {
+    window.FocusForge?.toast('Unable to update the selected tasks. Please try again.', 'error');
   }
 }
 

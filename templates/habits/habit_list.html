@@ -20,7 +20,7 @@
       <div style="font-size:12px;color:var(--text-2)" id="habitProgress">{{ completed_today_count }} / {{ total_habits }} completed</div>
     </div>
     <div class="card-body flush">
-      <ul class="habit-list" id="habitsList">
+      <ul class="habit-list mobile-habit-scroll" id="habitsList">
         {% for habit in habits %}
           <li class="habit-item"
               data-habit-id="{{ habit.pk }}"
@@ -178,7 +178,7 @@ habitForm.onsubmit = async e => {
     error.hidden = false;
     return;
   }
-  location.reload();
+  window.FocusForge?.redirectWithToast(window.location.href, editingHabitId ? 'Habit updated successfully.' : 'Habit added successfully.');
 };
 
 function closeDeleteHabitModal() {
@@ -229,7 +229,9 @@ document.getElementById('confirmDeleteHabit').onclick = async () => {
   if (r.ok) {
     deleteHabitRow.remove();
     closeDeleteHabitModal();
-    location.reload();
+    window.FocusForge?.redirectWithToast(window.location.href, 'Habit deleted successfully.');
+  } else {
+    window.FocusForge?.toast('Unable to delete the habit. Please try again.', 'error');
   }
 };
 </script>

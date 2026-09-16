@@ -160,7 +160,7 @@ goalForm.onsubmit = async e => {
     error.hidden = false;
     return;
   }
-  location.reload();
+  window.FocusForge?.redirectWithToast(window.location.href, editingGoalId ? 'Goal updated successfully.' : 'Goal added successfully.');
 };
 
 function closeDeleteGoalModal() {
@@ -220,6 +220,9 @@ document.getElementById('confirmDeleteGoal').onclick = async () => {
   if (r.ok) {
     deleteGoalCard.remove();
     closeDeleteGoalModal();
+    window.FocusForge?.toast('Goal deleted successfully.', 'success');
+  } else {
+    window.FocusForge?.toast('Unable to delete the goal. Please try again.', 'error');
   }
 };
 </script>
