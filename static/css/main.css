@@ -988,6 +988,8 @@ html[data-theme="light"] .heatmap-cell.l4 { background: var(--accent); }
 .focus-big-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .focus-big-ring .focus-ring-bg { stroke-width: 12; }
 .focus-big-ring .focus-ring-fg { stroke-width: 12; }
+.focus-big-ring .focus-ring-fg { opacity: 0; }
+.focus-big-ring.is-active-session .focus-ring-fg { opacity: 1; }
 .focus-big-center {
   position: absolute;
   inset: 0;
@@ -1512,6 +1514,16 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
 .export-card-icon svg { width: 22px; height: 22px; }
 .export-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .export-card p { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+.export-dropdown { position: relative; }
+.export-chevron { font-size: 11px; margin-left: 2px; transition: transform .18s var(--ease); }
+.export-dropdown:has(.export-menu:not([hidden])) .export-chevron { transform: rotate(180deg); }
+.export-menu { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); min-width: 218px; overflow: hidden; padding: 6px; position: absolute; right: 0; top: calc(100% + 8px); z-index: 120; }
+.export-menu a { align-items: center; border-radius: 8px; display: flex; gap: 10px; padding: 10px; }
+.export-menu a:hover, .export-menu a:focus-visible { background: var(--bg-2); outline: none; }
+.export-menu > a > i { color: var(--accent); font-size: 17px; }
+.export-menu span { display: grid; gap: 1px; }
+.export-menu strong { color: var(--text-0); font-size: 12px; }
+.export-menu small { color: var(--text-2); font-size: 11px; }
 
 /* ============ Responsive breakpoints (global) ============ */
 @media (max-width: 1200px) {
@@ -1544,6 +1556,12 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   .notif-panel { right: 10px; left: 10px; width: auto; }
   .task-table-head, .task-table-row { grid-template-columns: 30px 1fr 80px; }
   .task-table-head > :nth-child(4), .task-table-row > :nth-child(4) { display: none; }
+  .page-head .profile-actions { display: grid; gap: 7px; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .page-head .profile-actions .btn { font-size: 11px; justify-content: center; padding-left: 7px; padding-right: 7px; white-space: nowrap; width: 100%; }
+  .page-head .profile-actions .btn > i { font-size: 14px; }
+  .profile-actions .export-dropdown { width: 100%; }
+  .profile-actions .export-dropdown .btn { width: 100%; }
+  .export-menu { left: 0; min-width: 0; right: 0; }
 }
 .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
 .sidebar-overlay.show { display: block; }
@@ -1666,4 +1684,49 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   .topbar-actions { gap: 4px; }
   .search-trigger { min-width: 64px; width: 64px; }
   .search-trigger input::placeholder { color: transparent; }
+}
+
+/* Focus timer activity, controls, and deadline rhythm. */
+.focus-duration-row { align-items: center; display: flex; gap: 10px; justify-content: center; margin: 16px auto 0; text-align: left; }
+.focus-duration-row label { color: var(--text-2); font-size: 14px; white-space: nowrap; }
+.focus-duration-input { align-items: center; background: var(--bg-2); border: 1px solid var(--border); border-radius: 9px; display: flex; flex: 0 0 118px; overflow: hidden; }
+.focus-duration-row input { background: transparent; border: 0; color: var(--text-0); font: inherit; min-width: 0; padding: 10px 12px; width: 100%; }
+.focus-duration-row input[type=number]::-webkit-inner-spin-button, .focus-duration-row input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.focus-duration-row input[type=number] { -moz-appearance: textfield; }
+.focus-duration-row input:focus { outline: none; }
+.focus-duration-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.focus-duration-input span { border-left: 1px solid var(--border); color: var(--text-2); font-size: 12px; padding: 10px 12px; }
+.deadline-section .card-head { align-items: center; }
+.deadline-section .card-title { letter-spacing: -.01em; }
+.deadline-page-body p { line-height: 1.45; }
+@media (max-width: 640px) {
+  .toast-container { bottom: auto; top: max(12px, env(safe-area-inset-top)); }
+  .page-head .profile-actions { display: grid; gap: 7px; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .page-head .profile-actions .btn { font-size: 11px; justify-content: center; padding-left: 6px; padding-right: 6px; white-space: nowrap; width: 100%; }
+  .page-head .profile-actions .btn > i { font-size: 13px; }
+  .profile-actions .export-dropdown { width: 100%; }
+  .focus-layout { gap: 16px; }
+  .focus-main { padding: 24px 18px; }
+  .focus-duration-row { justify-content: center; max-width: 100%; }
+  .focus-big-controls { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .focus-big-controls .btn { min-width: 0; padding-left: 12px; padding-right: 12px; }
+  .focus-big-controls .btn:first-child { grid-column: 1 / -1; justify-content: center; }
+  .daily-goal-form > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-width: 0; }
+  .daily-goal-form select { min-width: 0; width: 100%; }
+  .daily-goal-form .btn { min-width: 0; padding-left: 10px; padding-right: 10px; }
+  .focus-history-scroll { -webkit-overflow-scrolling: touch; max-height: 360px; overflow-y: auto; }
+  .study-history-scroll { -webkit-overflow-scrolling: touch; max-height: 360px; overflow-y: auto; }
+  .dash-grid .task-list { -webkit-overflow-scrolling: touch; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
+  .dash-grid-2 .habit-list, .dash-grid-2 .goal-list, .dash-grid-2 .study-list, .dash-grid-2 .deadline-list { -webkit-overflow-scrolling: touch; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; }
+  .study-history-scroll::-webkit-scrollbar, .dash-grid .task-list::-webkit-scrollbar, .dash-grid-2 .habit-list::-webkit-scrollbar, .dash-grid-2 .goal-list::-webkit-scrollbar, .dash-grid-2 .study-list::-webkit-scrollbar, .dash-grid-2 .deadline-list::-webkit-scrollbar { width: 6px; }
+  .study-history-scroll::-webkit-scrollbar-thumb, .dash-grid .task-list::-webkit-scrollbar-thumb, .dash-grid-2 .habit-list::-webkit-scrollbar-thumb, .dash-grid-2 .goal-list::-webkit-scrollbar-thumb, .dash-grid-2 .study-list::-webkit-scrollbar-thumb, .dash-grid-2 .deadline-list::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 999px; }
+  .deadline-section .card-head { min-height: 62px; padding: 0 16px; }
+  .deadline-section .card-title { font-size: 15px; }
+  .deadline-page-body strong { font-size: 13px; }
+  .deadline-page-body p { white-space: normal; }
+}
+@media (max-width: 359px) {
+  .page-head .profile-actions { gap: 4px; }
+  .page-head .profile-actions .btn { font-size: 10px; padding-left: 3px; padding-right: 3px; }
+  .page-head .profile-actions .btn > i { display: none; }
 }
