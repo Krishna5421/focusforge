@@ -69,6 +69,21 @@ class AuthenticationValidationTests(TestCase):
         self.assertContains(response, 'Username cannot start with an underscore.')
         self.assertContains(response, 'has-error')
 
+    def test_duplicate_registration_stays_on_the_form_with_a_username_error(self):
+        User.objects.create_user(username='already-used', password='password')
+
+        response = self.client.post(reverse('accounts:register'), {
+            'username': 'already-used',
+            'first_name': 'Krishna',
+            'last_name': 'Kumar',
+            'email': 'krishna@example.com',
+            'password1': 'secure-password-123',
+            'password2': 'secure-password-123',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This username is already in use.')
+
 
 class PasswordResetOTPTests(TestCase):
     def setUp(self):
