@@ -1640,6 +1640,8 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
 }
 @media (max-width: 900px) {
   .topbar { display: grid; gap: 8px; grid-template-columns: 36px minmax(0, 1fr) auto; grid-template-areas: "menu title actions"; }
+  .main { padding-top: var(--topbar-h); }
+  .topbar { left: 0; position: fixed; right: 0; top: 0; width: 100%; z-index: 45; }
   .menu-toggle { grid-area: menu; }
   .topbar-title-group { grid-area: title; }
   .page-title-sub { display: none; }
@@ -1700,7 +1702,7 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
 .deadline-section .card-title { letter-spacing: -.01em; }
 .deadline-page-body p { line-height: 1.45; }
 @media (max-width: 640px) {
-  .toast-container { bottom: auto; top: max(12px, env(safe-area-inset-top)); }
+  .toast-container { bottom: auto; top: max(calc(var(--topbar-h) + 10px), env(safe-area-inset-top)); }
   .page-head .profile-actions { display: grid; gap: 7px; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   .page-head .profile-actions .btn { font-size: 11px; justify-content: center; padding-left: 6px; padding-right: 6px; white-space: nowrap; width: 100%; }
   .page-head .profile-actions .btn > i { font-size: 13px; }
