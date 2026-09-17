@@ -55,3 +55,42 @@ class ErrorHandlingTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()['error'], 'The page you requested does not exist or may have moved.')
+
+
+class GlobalSearchTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='search-user', password='password')
+        self.other_user = User.objects.create_user(username='other-search-user', password='password')
+        self.client.login(username='search-user', password='password')
+
+    def test_search_opens_the_matching_tasks_page(self):
+        Task.objects.create(user=self.user, title='Read project brief')
+        Task.objects.create(user=self.other_user, title='Read private notes')
+
+        response = self.client.get(reverse('core:global_search'), {'q': 'Read'}, follow=True)
+
+        self.assertEqual(response.redirect_chain[-1][0], f'{reverse("tasks:task_list")}?search=Read')
+        self.assertContains(response, 'Read project brief')
+        self.assertNotContains(response, 'Read private notes')
+        self.assertContains(response, 'Matching results found for')
+
+    def test_search_opens_the_matching_habits_page(self):
+        Habit.objects.create(user=self.user, name='Read every day')
+
+        response = self.client.get(reverse('core:global_search'), {'q': 'Read'}, follow=True)
+
+        self.assertEqual(response.redirect_chain[-1][0], f'{reverse("habits:habit_list")}?search=Read')
+        self.assertContains(response, 'Read every day')
+
+    def test_search_opens_the_matching_goals_page(self):
+        Goal.objects.create(user=self.user, title='Read twelve books', deadline=timezone.localdate())
+
+        response = self.client.get(reverse('core:global_search'), {'q': 'Read'}, follow=True)
+
+        self.assertEqual(response.redirect_chain[-1][0], f'{reverse("goals:goal_list")}?search=Read')
+        self.assertContains(response, 'Read twelve books')
+
+    def test_search_shows_friendly_empty_state(self):
+        response = self.client.get(reverse('core:global_search'), {'q': 'nothing-matches-this'}, follow=True)
+
+        self.assertContains(response, 'No tasks, habits, or goals were found')

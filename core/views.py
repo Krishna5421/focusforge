@@ -1,8 +1,11 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from tasks.models import Task
 from habits.models import Habit, HabitLog
@@ -163,6 +166,27 @@ def dashboard(request):
         'recent_study_sessions': recent_study_sessions,
     }
     return render(request, 'core/dashboard.html', context)
+
+
+@login_required
+def global_search(request):
+    query = (request.GET.get('q') or request.GET.get('search') or '').strip()
+    if not query:
+        messages.info(request, 'Enter a task, habit, or goal to search.')
+        return redirect('core:dashboard')
+
+    destinations = (
+        ('tasks:task_list', Task.objects.filter(user=request.user, title__icontains=query)),
+        ('habits:habit_list', Habit.objects.filter(user=request.user, is_active=True, name__icontains=query)),
+        ('goals:goal_list', Goal.objects.filter(user=request.user, title__icontains=query)),
+    )
+    for view_name, results in destinations:
+        if results.exists():
+            messages.success(request, f'Matching results found for “{query}”.')
+            return redirect(f'{reverse(view_name)}?{urlencode({"search": query})}')
+
+    messages.warning(request, f'No tasks, habits, or goals were found for “{query}”.')
+    return redirect('core:dashboard')
 
 
 @login_required
