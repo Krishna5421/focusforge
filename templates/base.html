@@ -89,7 +89,7 @@
         <span class="page-title-sub">{% block topbar_subtitle %}Your productivity workspace{% endblock %}</span>
       </div>
       <div class="topbar-actions">
-      <form class="search-trigger" action="{% url 'tasks:task_list' %}" method="get">
+      <form class="search-trigger" action="{% url 'core:global_search' %}" method="get" role="search">
         <i class="bi bi-search"></i>
         <input name="search" placeholder="Search tasks, habits, goals…" data-desktop-placeholder="Search tasks, habits, goals…" data-mobile-placeholder="Search">
       </form>
