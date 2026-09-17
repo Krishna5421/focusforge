@@ -50,7 +50,10 @@ def habit_list(request):
         activity_days.append({'date': day, 'count': count, 'level': level})
 
     habits = all_habits
+    search_query = request.GET.get('search', '').strip()
     frequency_filter = request.GET.get('frequency')
+    if search_query:
+        habits = habits.filter(name__icontains=search_query)
     if frequency_filter:
         habits = habits.filter(frequency=frequency_filter)
 
@@ -65,6 +68,7 @@ def habit_list(request):
         'weekly_count': weekly_count,
         'activity_days': activity_days,
         'habit_categories': Habit.CATEGORY_CHOICES,
+        'search_query': search_query,
     }
     return render(request, 'habits/habit_list.html', context)
 

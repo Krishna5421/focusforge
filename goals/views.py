@@ -15,7 +15,13 @@ def goal_list(request):
         Case(When(status='COMPLETED', then=1), default=0, output_field=IntegerField()),
         '-created_at',
     )
-    return render(request, 'goals/goal_list.html', {'goals': goals})
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        goals = goals.filter(title__icontains=search_query)
+    return render(request, 'goals/goal_list.html', {
+        'goals': goals,
+        'search_query': search_query,
+    })
 
 
 @login_required
