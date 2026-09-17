@@ -1,5 +1,3 @@
-import json
-
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -31,17 +29,16 @@ class ProfileTests(TestCase):
         self.assertEqual(self.user.first_name, 'Krishna')
         self.assertEqual(self.user.profile.bio, 'Building better routines.')
 
-    def test_export_contains_only_current_users_data(self):
+    def test_export_creates_a_pdf_report(self):
         Task.objects.create(user=self.user, title='My task')
         Task.objects.create(user=self.other, title='Other task')
 
-        response = self.client.get(reverse('accounts:export_data'))
+        response = self.client.get(f'{reverse("accounts:export_data")}?period=weekly')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('attachment;', response['Content-Disposition'])
-        data = json.loads(response.content)
-        self.assertEqual(data['profile']['username'], 'profile-user')
-        self.assertEqual([task['title'] for task in data['tasks']], ['My task'])
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('focusforge-weekly-report.pdf', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF'))
 
     def test_profile_shows_weekly_consistency_from_tasks_and_habits(self):
         today = timezone.localdate()
@@ -102,3 +99,9 @@ class PasswordResetOTPTests(TestCase):
         session.save()
         response = self.client.post(reverse('accounts:password_reset_verify'), {'otp': '123456'})
         self.assertContains(response, 'This code has expired.')
+
+    def test_unknown_password_reset_identifier_shows_clear_error(self):
+        response = self.client.post(reverse('accounts:password_reset'), {'identifier': 'missing-account'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No account was found with those details.')
