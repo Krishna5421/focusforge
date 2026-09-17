@@ -11,7 +11,7 @@ from .models import PomodoroSession, PomodoroSettings
 def pomodoro_page(request):
     recent_sessions = list(PomodoroSession.objects.filter(user=request.user).select_related('task')[:30])
     today = timezone.localdate()
-    sessions = PomodoroSession.objects.filter(user=request.user, status='COMPLETED')
+    sessions = PomodoroSession.objects.filter(user=request.user, status__in=['COMPLETED', 'STOPPED'], actual_focus_seconds__gt=0)
     completed_today = sessions.filter(started_at__date=today).count()
     completed_yesterday = sessions.filter(started_at__date=today - timedelta(days=1)).count()
     today_focus_seconds = sum(

@@ -21,8 +21,14 @@
       <button class="focus-tab" type="button" data-mode="long">Long Break</button>
     </div>
 
-    <div class="focus-big-ring">
+    <div class="focus-big-ring" id="focusRingContainer">
       <svg viewBox="0 0 320 320" aria-hidden="true">
+        <defs>
+          <linearGradient id="focusGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f5a524"/>
+            <stop offset="100%" stop-color="#ff7a45"/>
+          </linearGradient>
+        </defs>
         <circle class="focus-ring-bg" cx="160" cy="160" r="142" fill="none"></circle>
         <circle class="focus-ring-fg" id="focusRingBig" cx="160" cy="160" r="142" fill="none"></circle>
       </svg>
@@ -39,10 +45,14 @@
         <option value="">Focus without a task</option>
         {% for task in tasks %}<option value="{{ task.id }}">{{ task.title }}</option>{% endfor %}
       </select>
+      <div class="focus-duration-row" id="focusDurationRow">
+        <label for="focusDuration">Focus duration</label>
+        <div class="focus-duration-input"><input id="focusDuration" name="duration" type="number" min="5" max="120" value="25" inputmode="numeric"><span>min</span></div>
+      </div>
       <div class="focus-big-controls">
         <button class="btn btn-primary" type="submit" id="focusStartBig"><i class="bi bi-play-fill"></i> Start</button>
         <button class="btn btn-secondary" type="button" id="focusPauseBig" disabled><i class="bi bi-pause-fill"></i> Pause</button>
-        <button class="btn btn-secondary" type="button" id="focusResetBig">Reset</button>
+        <button class="btn btn-secondary" type="button" id="focusResetBig">Stop</button>
       </div>
       <p class="focus-mode-note" id="focusModeNote"><strong>25 min</strong> focus &nbsp;&middot;&nbsp; <strong>5 min</strong> short break &nbsp;&middot;&nbsp; <strong>15 min</strong> long break</p>
     </form>
@@ -101,34 +111,48 @@
 (() => {
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
   const modes = {
-    focus: { seconds: 25 * 60, label: 'Ready to focus', button: 'Start', note: 'Focus sessions are saved to your history.' },
-    short: { seconds: 5 * 60, label: 'Ready for a short break', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' },
-    long: { seconds: 15 * 60, label: 'Ready for a long break', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' }
+    focus: { label: 'Ready to focus', button: 'Start', note: 'Save your focused time whenever you stop.' },
+    short: { seconds: 5 * 60, label: 'Short break ready', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' },
+    long: { seconds: 15 * 60, label: 'Long break ready', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' }
   };
-  let mode = 'focus', state = 'idle', seconds = modes.focus.seconds, sessionId = null, timer = null;
+  let mode = 'focus', state = 'idle', seconds = 25 * 60, totalSeconds = 25 * 60, sessionId = null, timer = null;
   const time = document.getElementById('focusTimeBig');
   const stateText = document.getElementById('focusStateBig');
   const ring = document.getElementById('focusRingBig');
+  const ringContainer = document.getElementById('focusRingContainer');
   const form = document.getElementById('focusForm');
   const startButton = document.getElementById('focusStartBig');
   const pauseButton = document.getElementById('focusPauseBig');
   const resetButton = document.getElementById('focusResetBig');
   const taskSelect = document.getElementById('focusTaskSelect');
+  const durationInput = document.getElementById('focusDuration');
+  const durationRow = document.getElementById('focusDurationRow');
   const note = document.getElementById('focusModeNote');
   const circumference = 2 * Math.PI * 142;
   ring.style.strokeDasharray = circumference;
+
+  const focusedSeconds = () => Math.max(0, totalSeconds - seconds);
+  const setIdleTime = () => {
+    totalSeconds = mode === 'focus' ? Number(durationInput.value || 25) * 60 : modes[mode].seconds;
+    seconds = totalSeconds;
+  };
 
   function render() {
     const minutes = Math.floor(seconds / 60);
     const remaining = String(seconds % 60).padStart(2, '0');
     time.textContent = `${minutes}:${remaining}`;
-    ring.style.strokeDashoffset = circumference * (1 - seconds / modes[mode].seconds);
-    stateText.textContent = state === 'running' ? (mode === 'focus' ? 'Focusing' : 'On break') : modes[mode].label;
+    ring.style.strokeDashoffset = -circumference * (1 - seconds / totalSeconds);
+    stateText.textContent = state === 'running' ? (mode === 'focus' ? 'Focusing' : 'On break') : state === 'stopped' ? 'Focus stopped' : modes[mode].label;
     stateText.classList.toggle('active', state === 'running');
-    startButton.innerHTML = `<i class="bi bi-play-fill"></i> ${state === 'paused' ? 'Resume' : modes[mode].button}`;
-    startButton.disabled = state === 'running';
+    ringContainer.classList.toggle('is-active-session', state !== 'idle');
+    const canSave = mode === 'focus' && sessionId && focusedSeconds() > 0;
+    startButton.innerHTML = canSave ? '<i class="bi bi-save"></i> Save Focus Session' : `<i class="bi bi-play-fill"></i> ${state === 'paused' ? 'Resume' : modes[mode].button}`;
+    startButton.disabled = state === 'stopped' && !canSave;
     pauseButton.disabled = state !== 'running';
+    resetButton.disabled = state === 'idle' && !sessionId;
     taskSelect.disabled = mode !== 'focus' || state !== 'idle';
+    durationInput.disabled = mode !== 'focus' || state !== 'idle';
+    durationRow.hidden = mode !== 'focus';
     note.textContent = modes[mode].note;
   }
 
@@ -139,10 +163,14 @@
     return payload;
   }
 
-  async function saveSession(status) {
+  async function saveSession(status, keepalive = false) {
     if (!sessionId) return;
-    const focused = modes[mode].seconds - seconds;
-    await post(`/pomodoro/${sessionId}/update/`, new URLSearchParams({ status, focus_seconds: focused }));
+    const data = new URLSearchParams({ status, focus_seconds: focusedSeconds() });
+    if (keepalive) {
+      await fetch(`/pomodoro/${sessionId}/update/`, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: data, keepalive: true });
+      return;
+    }
+    await post(`/pomodoro/${sessionId}/update/`, data);
   }
 
   function startClock() {
@@ -157,7 +185,7 @@
         state = 'idle';
         render();
         if (sessionId) {
-          try { await saveSession('COMPLETED'); window.location.reload(); } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete this focus session.'); }
+          try { await saveSession('COMPLETED'); sessionId = null; setIdleTime(); window.FocusForge?.toast('Focus session saved successfully.', 'success'); render(); } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete this focus session.'); }
         }
       } else render();
     }, 1000);
@@ -166,7 +194,7 @@
   document.querySelectorAll('.focus-tab').forEach(button => button.addEventListener('click', () => {
     if (state !== 'idle') return;
     mode = button.dataset.mode;
-    seconds = modes[mode].seconds;
+    setIdleTime();
     sessionId = null;
     document.querySelectorAll('.focus-tab').forEach(tab => tab.classList.toggle('active', tab === button));
     render();
@@ -174,10 +202,22 @@
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
+    if (mode === 'focus' && sessionId && focusedSeconds() > 0) {
+      if (timer) { window.clearInterval(timer); timer = null; }
+      try {
+        await saveSession('STOPPED');
+        sessionId = null; state = 'idle'; setIdleTime(); render();
+        window.FocusForge?.toast('Focus session saved successfully.', 'success');
+      } catch (error) { window.FocusForge?.apiError(error, 'Unable to save this focus session.'); }
+      return;
+    }
     if (state === 'running') return;
     try {
       if (mode === 'focus' && !sessionId) {
-        const data = new URLSearchParams({ duration: 25, task_id: taskSelect.value });
+        const duration = Number(durationInput.value);
+        if (!Number.isInteger(duration) || duration < 5 || duration > 120) throw new Error('Choose a focus duration between 5 and 120 minutes.');
+        totalSeconds = duration * 60; seconds = totalSeconds;
+        const data = new URLSearchParams({ duration, task_id: taskSelect.value });
         const payload = await post('{% url "pomodoro:pomodoro_start" %}', data);
         sessionId = payload.session_id;
       }
@@ -196,10 +236,13 @@
   resetButton.addEventListener('click', async () => {
     if (timer) window.clearInterval(timer);
     timer = null;
-    try {
-      if (sessionId) { await saveSession('STOPPED'); window.location.reload(); return; }
-    } catch (error) { window.FocusForge?.apiError(error, 'Unable to stop the focus session.'); return; }
-    state = 'idle'; seconds = modes[mode].seconds; render();
+    if (sessionId) { state = 'stopped'; render(); return; }
+    state = 'idle'; setIdleTime(); render();
+  });
+
+  durationInput.addEventListener('change', () => { if (state === 'idle') { setIdleTime(); render(); } });
+  window.addEventListener('pagehide', () => {
+    if (mode === 'focus' && sessionId && focusedSeconds() > 0) saveSession('STOPPED', true);
   });
 
   document.getElementById('dailyGoalForm').addEventListener('submit', async event => {

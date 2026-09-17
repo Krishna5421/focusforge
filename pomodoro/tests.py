@@ -50,6 +50,18 @@ class PomodoroViewsTests(TestCase):
         self.assertEqual(session.actual_focus_seconds, 1500)
         self.assertIsNotNone(session.completed_at)
 
+    def test_stopped_session_preserves_actual_focus_time(self):
+        session = PomodoroSession.objects.create(user=self.user, task=self.task, duration_minutes=25)
+
+        response = self.client.post(reverse('pomodoro:pomodoro_update', args=[session.id]), {
+            'status': 'STOPPED', 'focus_seconds': 437,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        session.refresh_from_db()
+        self.assertEqual(session.status, 'STOPPED')
+        self.assertEqual(session.actual_focus_seconds, 437)
+
     def test_daily_goal_is_saved_for_the_user(self):
         response = self.client.post(reverse('pomodoro:update_daily_goal'), {'daily_goal': 8})
 
@@ -74,3 +86,13 @@ class PomodoroViewsTests(TestCase):
         self.assertEqual(response.context['today_focus_minutes'], 25)
         self.assertEqual(response.context['recent_sessions'][0].started_at.date(), timezone.localdate())
         self.assertTrue(PomodoroSettings.objects.filter(user=self.user).exists())
+
+    def test_today_statistics_include_saved_partial_sessions(self):
+        PomodoroSession.objects.create(
+            user=self.user, status='STOPPED', duration_minutes=25, actual_focus_seconds=600,
+        )
+
+        response = self.client.get(reverse('pomodoro:pomodoro_page'))
+
+        self.assertEqual(response.context['completed_today'], 1)
+        self.assertEqual(response.context['today_focus_minutes'], 10)

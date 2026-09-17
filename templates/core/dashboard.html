@@ -372,6 +372,8 @@
 (() => {
   const canvas = document.getElementById('productivityWeekChart');
   const data = JSON.parse(document.getElementById('productivity-chart-data').textContent);
+  // A short saved focus session should not stretch the chart to a 0–7 minute axis.
+  const focusAxisMax = Math.max(25, Math.ceil(Math.max(0, ...data.focus) / 5) * 5);
   new Chart(canvas, {
     type: 'bar',
     data: {
@@ -379,7 +381,7 @@
       datasets: [
         { label: 'Tasks', data: data.tasks, backgroundColor: 'rgba(96,165,250,.86)', borderRadius: 5, borderSkipped: false, yAxisID: 'count' },
         { label: 'Habit check-ins', data: data.habits, backgroundColor: 'rgba(52,211,153,.78)', borderRadius: 5, borderSkipped: false, yAxisID: 'count' },
-        { label: 'Focus minutes', data: data.focus, type: 'line', borderColor: '#f5a524', backgroundColor: 'rgba(245,165,36,.12)', fill: true, tension: .36, pointRadius: 3, pointHoverRadius: 5, yAxisID: 'minutes' }
+        { label: 'Focus minutes', data: data.focus, type: 'line', borderColor: '#f5a524', backgroundColor: 'rgba(245,165,36,.12)', fill: false, tension: .28, pointRadius: 3, pointHoverRadius: 5, yAxisID: 'minutes' }
       ]
     },
     options: {
@@ -394,7 +396,7 @@
       scales: {
         x: { stacked: false, ticks: { color: '#8a8f9c', font: { size: 11 } }, grid: { display: false } },
         count: { beginAtZero: true, position: 'left', ticks: { color: '#8a8f9c', precision: 0 }, grid: { color: 'rgba(138,143,156,.14)' } },
-        minutes: { beginAtZero: true, position: 'right', ticks: { color: '#f5a524', callback: value => value + 'm' }, grid: { drawOnChartArea: false } }
+        minutes: { beginAtZero: true, suggestedMax: focusAxisMax, position: 'right', ticks: { color: '#f5a524', stepSize: 5, callback: value => value + 'm' }, grid: { drawOnChartArea: false } }
       }
     }
   });
@@ -519,7 +521,8 @@
   }
 
   function controlsForSession() {
-    controls.outerHTML = '<div class="dashboard-focus-controls"><button class="btn btn-secondary" id="dashboardFocusPause" type="button"><i class="bi bi-pause-fill"></i> Pause</button><button class="btn btn-danger-ghost" id="dashboardFocusEnd" type="button">End</button></div>';
+    controls.outerHTML = '<div class="dashboard-focus-controls"><button class="btn btn-primary" id="dashboardFocusSave" type="button"><i class="bi bi-save"></i> Save</button><button class="btn btn-secondary" id="dashboardFocusPause" type="button"><i class="bi bi-pause-fill"></i> Pause</button><button class="btn btn-danger-ghost" id="dashboardFocusEnd" type="button">End</button></div>';
+    widget.querySelector('#dashboardFocusSave').onclick = save;
     widget.querySelector('#dashboardFocusPause').onclick = pause;
     widget.querySelector('#dashboardFocusEnd').onclick = end;
   }
@@ -582,6 +585,17 @@
 
   function end() { openEndModal(); }
 
+  async function save() {
+    clearInterval(interval); running = false;
+    try {
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'STOPPED', focus_seconds: 1500 - seconds });
+      window.FocusForge?.toast('Focus session saved successfully.', 'success');
+      window.location.reload();
+    } catch (error) {
+      window.FocusForge?.apiError(error, 'Unable to save the focus session. Please try again.');
+    }
+  }
+
   async function confirmEnd() {
     clearInterval(interval);
     try {
@@ -596,6 +610,13 @@
   document.getElementById('dashboardEndFocusCancel').onclick = closeEndModal;
   document.getElementById('dashboardEndFocusClose').onclick = closeEndModal;
   endModal.onclick = event => { if (event.target === endModal) closeEndModal(); };
+  window.addEventListener('pagehide', () => {
+    if (!sessionId || seconds >= 25 * 60) return;
+    fetch(`/pomodoro/${sessionId}/update/`, {
+      method: 'POST', headers: { 'X-CSRFToken': csrf },
+      body: new URLSearchParams({ status: 'STOPPED', focus_seconds: 25 * 60 - seconds }), keepalive: true,
+    });
+  });
   controls.addEventListener('click', start);
   render();
 })();
