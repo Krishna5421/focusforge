@@ -5,17 +5,18 @@
 {% block topbar_subtitle %}Update your account details{% endblock %}
 
 {% block content %}
-<div class="page-head">
-  <div>
-    <h1>Edit Profile</h1>
-    <p>Keep your account information up to date.</p>
+<div class="profile-edit-page">
+  <div class="page-head profile-edit-head">
+    <div>
+      <h1>Edit Profile</h1>
+      <p>Keep your account information up to date.</p>
+    </div>
+    <a class="btn btn-secondary" href="{% url 'accounts:profile' %}">
+      <i class="bi bi-arrow-left"></i> Back to Profile
+    </a>
   </div>
-  <a class="btn btn-secondary" href="{% url 'accounts:profile' %}">
-    <i class="bi bi-arrow-left"></i> Back to Profile
-  </a>
-</div>
 
-<section class="card profile-edit-card">
+  <section class="card profile-edit-card">
   <div class="card-head">
     <h2 class="card-title">Profile details</h2>
   </div>
@@ -28,7 +29,8 @@
         {% if request.user.profile.profile_picture %}
           <img id="profilePicturePreviewImage"
                src="{{ request.user.profile.profile_picture.url }}"
-               alt="Profile picture preview">
+               alt="Profile picture preview"
+               onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
           <span id="profilePicturePreviewFallback" class="profile-avatar-fallback" hidden>
             {{ request.user.username|first|upper }}
           </span>
@@ -103,7 +105,8 @@
       <button class="btn btn-primary" type="submit">Save changes</button>
     </div>
   </form>
-</section>
+  </section>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -113,6 +116,14 @@
   const image = document.getElementById('profilePicturePreviewImage');
   const fallback = document.getElementById('profilePicturePreviewFallback');
   let objectUrl = null;
+
+  const showFallback = () => {
+    image.hidden = true;
+    fallback.hidden = false;
+  };
+
+  image?.addEventListener('error', showFallback);
+  if (image && !image.hidden && image.complete && !image.naturalWidth) showFallback();
 
   input?.addEventListener('change', () => {
     const file = input.files?.[0];

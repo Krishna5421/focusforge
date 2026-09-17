@@ -1455,7 +1455,9 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
 .profile-summary-body { align-items: center; display: flex; flex-direction: column; padding: 28px 32px; text-align: center; }
 .profile-avatar { width: 104px; height: 104px; border: 3px solid var(--border-strong); border-radius: 50%; display: grid; object-fit: cover; overflow: hidden; place-items: center; margin-top: 0; background: var(--bg-3); }
 .profile-avatar img { display: block; height: 100%; object-fit: cover; width: 100%; }
+.profile-avatar img[hidden] { display: none !important; }
 .profile-avatar-fallback { background: linear-gradient(135deg, var(--purple), var(--pink)); color: white; font-size: 28px; font-weight: 700; }
+.profile-avatar .profile-avatar-fallback { align-items: center; display: grid; height: 100%; justify-content: center; width: 100%; }
 .profile-summary h2 { font-size: 20px; margin: 12px 0 3px; }
 .profile-email, .profile-joined { color: var(--text-2); font-size: 13px; }
 .profile-bio { color: var(--text-1); font-size: 13px; line-height: 1.55; margin: 18px 0; max-width: 460px; }
@@ -1652,6 +1654,13 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   .topbar-actions { display: flex; gap: 10px; grid-area: actions; justify-self: end; margin-left: 0; }
   .topbar-actions .icon-btn { height: 38px; width: 38px; }
   .content { padding: 16px 12px max(24px, env(safe-area-inset-bottom)); }
+  /* The fixed mobile sidebar is removed from normal flow, but some mobile
+     browsers retain a constrained flex width for this form page. Keep this
+     page's content column aligned with the full-width fixed topbar. */
+  .app:has(.profile-edit-page) .main,
+  .app:has(.profile-edit-page) .content { max-width: 100%; width: 100%; }
+  .app:has(.profile-edit-page) .main { flex: 0 0 100%; }
+  .profile-edit-page, .profile-edit-page .profile-edit-card { box-sizing: border-box; max-width: none; width: 100%; }
   .form-row, .profile-edit-actions, .profile-actions { grid-template-columns: 1fr; flex-wrap: wrap; }
   .profile-edit-actions { justify-content: stretch; }
   .profile-edit-actions .btn, .profile-actions .btn { flex: 1 1 140px; }
@@ -1707,6 +1716,15 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   .page-head .profile-actions .btn { font-size: 11px; justify-content: center; padding-left: 6px; padding-right: 6px; white-space: nowrap; width: 100%; }
   .page-head .profile-actions .btn > i { font-size: 13px; }
   .profile-actions .export-dropdown { width: 100%; }
+  .profile-edit-card { min-width: 0; width: 100%; }
+  .profile-edit-head { gap: 8px; margin-bottom: 16px; }
+  .profile-edit-head .btn { align-self: flex-start; }
+  .profile-edit-form { padding: 18px 16px; }
+  .profile-photo-row { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .profile-photo-row > div:last-child { flex: 1 1 180px; min-width: 0; }
+  .change-photo-button { max-width: 100%; white-space: normal; }
+  .profile-edit-actions { flex-wrap: nowrap; margin: 18px -16px -18px; padding: 14px 16px; }
+  .profile-edit-actions .btn { flex: 1 1 0; justify-content: center; min-width: 0; padding-left: 10px; padding-right: 10px; }
   .focus-layout { gap: 16px; }
   .focus-main { padding: 24px 18px; }
   .focus-duration-row { justify-content: center; max-width: 100%; }
