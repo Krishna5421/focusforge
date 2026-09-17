@@ -170,7 +170,29 @@
       await fetch(`/pomodoro/${sessionId}/update/`, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: data, keepalive: true });
       return;
     }
-    await post(`/pomodoro/${sessionId}/update/`, data);
+    return post(`/pomodoro/${sessionId}/update/`, data);
+  }
+
+  function updateSavedSessionUI(payload) {
+    const history = document.querySelector('.focus-history');
+    const historyScroll = document.querySelector('.focus-history-scroll');
+    if (history) {
+      const item = document.createElement('li');
+      item.className = 'focus-history-item';
+      const title = payload.task || 'Focus session';
+      const status = payload.status === 'COMPLETED' ? 'Completed' : 'Saved';
+      item.innerHTML = `<div class="focus-history-label"><span class="focus-history-dot"></span><div><strong></strong><small>${status} · Just now</small></div></div><span class="focus-history-dur">${payload.display_minutes}m</span>`;
+      item.querySelector('strong').textContent = title;
+      history.prepend(item);
+    } else if (historyScroll) {
+      historyScroll.innerHTML = `<ul class="focus-history"><li class="focus-history-item"><div class="focus-history-label"><span class="focus-history-dot"></span><div><strong></strong><small>Saved · Just now</small></div></div><span class="focus-history-dur">${payload.display_minutes}m</span></li></ul>`;
+      historyScroll.querySelector('strong').textContent = payload.task || 'Focus session';
+    }
+    const todayStats = document.querySelector('.today-stats');
+    if (todayStats) {
+      todayStats.querySelector('div:first-child strong').childNodes[0].nodeValue = payload.today_sessions;
+      todayStats.querySelector('.accent-value').textContent = `${payload.today_focus_minutes}m`;
+    }
   }
 
   function startClock() {
@@ -185,7 +207,7 @@
         state = 'idle';
         render();
         if (sessionId) {
-          try { await saveSession('COMPLETED'); sessionId = null; setIdleTime(); window.FocusForge?.toast('Focus session saved successfully.', 'success'); render(); } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete this focus session.'); }
+          try { const payload = await saveSession('COMPLETED'); updateSavedSessionUI(payload); sessionId = null; setIdleTime(); window.FocusForge?.toast('Focus session saved successfully.', 'success'); render(); } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete this focus session.'); }
         }
       } else render();
     }, 1000);
@@ -205,7 +227,8 @@
     if (mode === 'focus' && sessionId && focusedSeconds() > 0) {
       if (timer) { window.clearInterval(timer); timer = null; }
       try {
-        await saveSession('STOPPED');
+        const payload = await saveSession('STOPPED');
+        updateSavedSessionUI(payload);
         sessionId = null; state = 'idle'; setIdleTime(); render();
         window.FocusForge?.toast('Focus session saved successfully.', 'success');
       } catch (error) { window.FocusForge?.apiError(error, 'Unable to save this focus session.'); }

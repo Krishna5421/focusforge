@@ -115,8 +115,16 @@ def pomodoro_update(request, pk):
         minutes = max(1, round(session.actual_focus_seconds / 60))
         notify_once(request.user, 'FOCUS_COMPLETED', 'Focus session completed',
                     f'{minutes} minutes of focused work completed.', session.pk)
+    today = timezone.localdate()
+    saved_sessions = PomodoroSession.objects.filter(
+        user=request.user, started_at__date=today,
+        status__in=['COMPLETED', 'STOPPED'], actual_focus_seconds__gt=0,
+    )
     return JsonResponse({
         'status': session.status,
         'focus_seconds': session.actual_focus_seconds,
         'task': session.task.title if session.task else None,
+        'display_minutes': max(1, round(session.actual_focus_seconds / 60)),
+        'today_sessions': saved_sessions.count(),
+        'today_focus_minutes': sum(item.actual_focus_seconds for item in saved_sessions) // 60,
     })
