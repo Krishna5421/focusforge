@@ -45,6 +45,14 @@
     {% endfor %}
   </ul>
 </section>
+
+<div class="modal-overlay" id="clearNotificationsModal" aria-hidden="true">
+  <div class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="clearNotificationsTitle">
+    <div class="modal-head"><h2 class="modal-title" id="clearNotificationsTitle">Clear all notifications?</h2><button class="icon-btn" type="button" id="closeClearNotifications" aria-label="Close"><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal-body"><p>This permanently removes all notifications. This action cannot be undone.</p></div>
+    <div class="modal-foot"><button class="btn btn-secondary" type="button" id="cancelClearNotifications">Cancel</button><button class="btn btn-danger-ghost" type="button" id="confirmClearNotifications">Clear all</button></div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -72,8 +80,16 @@
   });
 
   const clearButton = document.getElementById('clearAllNotifications');
-  clearButton?.addEventListener('click', async () => {
-    if (!window.confirm('Clear all notifications? This cannot be undone.')) return;
+  const clearModal = document.getElementById('clearNotificationsModal');
+  const hideClearModal = () => { clearModal?.classList.remove('show'); clearModal?.setAttribute('aria-hidden', 'true'); };
+  clearButton?.addEventListener('click', () => { clearModal?.classList.add('show'); clearModal?.setAttribute('aria-hidden', 'false'); document.getElementById('confirmClearNotifications')?.focus(); });
+  document.getElementById('closeClearNotifications')?.addEventListener('click', hideClearModal);
+  document.getElementById('cancelClearNotifications')?.addEventListener('click', hideClearModal);
+  clearModal?.addEventListener('click', event => { if (event.target === clearModal) hideClearModal(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') hideClearModal(); });
+  document.getElementById('confirmClearNotifications')?.addEventListener('click', async () => {
+    const confirmButton = document.getElementById('confirmClearNotifications');
+    confirmButton.disabled = true;
     clearButton.disabled = true;
     try {
       const response = await fetch('{% url "notifications:notification_clear_all" %}', {
@@ -84,9 +100,11 @@
       document.getElementById('notificationsList').innerHTML = '<li class="notifications-empty"><i class="bi bi-bell"></i><strong>You’re all caught up</strong><span>Notifications about your productivity activity will appear here.</span></li>';
       document.getElementById('markAllNotifications')?.remove();
       clearButton.remove();
+      hideClearModal();
       window.FocusForge?.toast('Notifications cleared successfully.', 'success');
     } catch (error) {
       clearButton.disabled = false;
+      confirmButton.disabled = false;
       window.FocusForge?.apiError(error, 'Unable to clear notifications.');
     }
   });

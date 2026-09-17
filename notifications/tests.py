@@ -34,6 +34,14 @@ class NotificationPageTests(TestCase):
         self.assertFalse(Notification.objects.filter(user=self.user).exists())
         self.assertTrue(Notification.objects.filter(user=other).exists())
 
+    def test_feed_includes_clear_confirmation_modal(self):
+        Notification.objects.create(user=self.user, type='TASK_COMPLETED', title='Done', message='Completed.')
+
+        response = self.client.get(reverse('notifications:notification_list'))
+
+        self.assertContains(response, 'Clear all notifications?')
+        self.assertContains(response, 'confirmClearNotifications')
+
 
 class BrevoEmailTests(TestCase):
     @override_settings(

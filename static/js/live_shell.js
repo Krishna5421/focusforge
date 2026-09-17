@@ -82,6 +82,11 @@
   };
 
   window.FocusForge = Object.assign(window.FocusForge || {}, { xpPopup, refreshShell: () => refreshShell(true) });
+  const syncSearchPlaceholder = () => document.querySelectorAll('[data-mobile-placeholder]').forEach(input => {
+    input.placeholder = window.matchMedia('(max-width: 640px)').matches ? input.dataset.mobilePlaceholder : input.dataset.desktopPlaceholder;
+  });
+  syncSearchPlaceholder();
+  window.addEventListener('resize', syncSearchPlaceholder);
   refreshShell();
   window.setInterval(refreshShell, 30000);
 })();
