@@ -53,7 +53,9 @@ def dashboard(request):
         goal_items.append({'goal': goal, 'days_left': days_left, 'overdue_days': max(0, -days_left)})
 
     today_focus_seconds = 0
-    todays_pomodoros = PomodoroSession.objects.filter(user=user, started_at__date=today, status='COMPLETED')
+    todays_pomodoros = PomodoroSession.objects.filter(
+        user=user, started_at__date=today, status__in=['COMPLETED', 'STOPPED'], actual_focus_seconds__gt=0,
+    )
     for session in todays_pomodoros:
         today_focus_seconds += session.actual_focus_seconds
     today_focus_minutes = today_focus_seconds // 60
@@ -78,7 +80,8 @@ def dashboard(request):
 
     week_focus_seconds = 0
     for session in PomodoroSession.objects.filter(
-        user=user, started_at__date__gte=week_start, started_at__date__lte=today, status='COMPLETED'
+        user=user, started_at__date__gte=week_start, started_at__date__lte=today,
+        status__in=['COMPLETED', 'STOPPED'], actual_focus_seconds__gt=0,
     ):
         week_focus_seconds += session.actual_focus_seconds
     week_focus_minutes = week_focus_seconds // 60
@@ -96,7 +99,7 @@ def dashboard(request):
             user=user, status='COMPLETED', completed_at__date=day
         ).count())
         focus_seconds = sum(session.actual_focus_seconds for session in PomodoroSession.objects.filter(
-            user=user, status='COMPLETED', started_at__date=day
+            user=user, status__in=['COMPLETED', 'STOPPED'], actual_focus_seconds__gt=0, started_at__date=day
         ))
         week_focus_series.append(round(focus_seconds / 60, 1))
         week_habit_series.append(HabitLog.objects.filter(
@@ -109,7 +112,8 @@ def dashboard(request):
 
     prev_week_focus_seconds = 0
     for session in PomodoroSession.objects.filter(
-        user=user, started_at__date__gte=prev_week_start, started_at__date__lte=prev_week_end, status='COMPLETED'
+        user=user, started_at__date__gte=prev_week_start, started_at__date__lte=prev_week_end,
+        status__in=['COMPLETED', 'STOPPED'], actual_focus_seconds__gt=0,
     ):
         prev_week_focus_seconds += session.actual_focus_seconds
     prev_week_focus_minutes = prev_week_focus_seconds // 60
@@ -254,7 +258,7 @@ def analytics_data(request):
         if day not in focus_actual:
             continue
         focus_planned[day] += session.duration_minutes
-        if session.status == 'COMPLETED':
+        if session.status in ['COMPLETED', 'STOPPED'] and session.actual_focus_seconds:
             focus_actual[day] += session.actual_focus_seconds / 60
 
     tasks_by_day = {day: 0 for day in dates}
