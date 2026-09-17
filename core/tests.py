@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -39,3 +39,19 @@ class AnalyticsTests(TestCase):
         self.assertEqual(data['study']['labels'], ['Mathematics'])
         self.assertEqual(data['study']['data'], [15])
         self.assertEqual(data['goals']['data'], [60])
+
+
+class ErrorHandlingTests(TestCase):
+    @override_settings(DEBUG=False)
+    def test_missing_page_shows_safe_error_page(self):
+        response = self.client.get('/this-page-does-not-exist/')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, 'Page not found', status_code=404)
+
+    @override_settings(DEBUG=False)
+    def test_missing_api_route_returns_safe_json_error(self):
+        response = self.client.get('/api/does-not-exist/', HTTP_ACCEPT='application/json')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['error'], 'The page you requested does not exist or may have moved.')

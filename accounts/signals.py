@@ -7,13 +7,9 @@ from .models import Profile
 
 @receiver(post_save, sender=User)
 def create_or_update_profile(sender, instance, created, **kwargs):
-    if created:
-        Profile.objects.create(user=instance)
-    else:
-        if not hasattr(instance, 'profile'):
-            Profile.objects.create(user=instance)
-        else:
-            instance.profile.save()
+    # get_or_create is safe for normal saves and avoids a duplicate profile
+    # exception if account creation requests arrive close together.
+    Profile.objects.get_or_create(user=instance)
 
 
 @receiver(user_logged_in)

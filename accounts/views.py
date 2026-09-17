@@ -7,6 +7,7 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.db.models import Q
+from django.db import IntegrityError, transaction
 from datetime import timedelta
 from xml.sax.saxutils import escape
 import secrets
@@ -60,10 +61,17 @@ def register_view(request):
     if request.method == 'POST':
         register_form = RegisterForm(request.POST)
         if register_form.is_valid():
-            user = register_form.save()
-            login(request, user)
-            messages.success(request, 'Account created successfully. Welcome to FocusForge!')
-            return redirect('core:dashboard')
+            try:
+                with transaction.atomic():
+                    user = register_form.save()
+            except IntegrityError:
+                # A second, near-simultaneous registration can pass validation
+                # before the first request commits. Keep this a field error.
+                register_form.add_error('username', 'This username is already in use. Please choose another one.')
+            else:
+                login(request, user)
+                messages.success(request, 'Account created successfully. Welcome to FocusForge!')
+                return redirect('core:dashboard')
     else:
         register_form = RegisterForm()
 
