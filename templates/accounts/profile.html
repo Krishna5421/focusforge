@@ -1,8 +1,76 @@
 {% extends 'base.html' %}
+
 {% block title %}Profile &middot; FocusForge{% endblock %}
 {% block topbar_title %}Profile{% endblock %}
 {% block topbar_subtitle %}Your FocusForge progress{% endblock %}
+
 {% block content %}
-<div class="page-head"><div><h1>Profile</h1><p>Manage your account and view your progress.</p></div><div class="profile-actions"><a class="btn btn-secondary" href="{% url 'accounts:export_data' %}"><i class="bi bi-download"></i> Export Data</a><a class="btn btn-primary" href="{% url 'accounts:settings' %}"><i class="bi bi-pencil-square"></i> Edit Profile</a><a class="btn btn-danger-ghost" href="{% url 'accounts:logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></div></div>
-<div class="profile-layout"><section class="card profile-summary"><div class="profile-cover"></div><div class="profile-summary-body">{% if profile.profile_picture %}<img class="profile-avatar" src="{{ profile.profile_picture.url }}" alt="{{ request.user.username }}'s profile picture">{% else %}<div class="profile-avatar profile-avatar-fallback">{{ request.user.username|first|upper }}</div>{% endif %}<h2>{{ request.user.get_full_name|default:request.user.username }}</h2><p class="profile-email">{{ request.user.email|default:'No email added' }}</p><p class="profile-bio">{{ profile.bio|default:'Add a short bio to personalize your profile.' }}</p><div class="profile-joined"><i class="bi bi-calendar3"></i> Member since {{ profile.created_at|date:'M Y' }}</div></div></section><section class="card profile-progress"><div class="card-head"><h2 class="card-title">Your Progress</h2></div><div class="profile-progress-grid"><div><span>Level</span><strong>{{ profile.get_level }}</strong></div><div><span>Total XP</span><strong>{{ profile.total_xp }}</strong></div><div><span>Current streak</span><strong>{{ profile.current_streak }}d</strong></div><div><span>Best streak</span><strong>{{ profile.longest_streak }}d</strong></div></div><div class="profile-score"><div><span>Weekly consistency</span><strong>{{ weekly_consistency_score }}%</strong></div><div class="score-track"><div style="width:{{ weekly_consistency_score }}%"></div></div></div></section></div>
+<div class="page-head">
+  <div>
+    <h1>Profile</h1>
+    <p>Manage your account and view your progress.</p>
+  </div>
+  <div class="profile-actions">
+    <div class="export-dropdown">
+      <button class="btn btn-secondary" type="button" id="exportMenuButton" aria-expanded="false" aria-controls="exportMenu">
+        <i class="bi bi-download"></i> Export report <i class="bi bi-chevron-down export-chevron"></i>
+      </button>
+      <div class="export-menu" id="exportMenu" hidden>
+        <a href="{% url 'accounts:export_data' %}?period=weekly"><i class="bi bi-calendar-week"></i><span><strong>Weekly PDF</strong><small>Monday through today</small></span></a>
+        <a href="{% url 'accounts:export_data' %}?period=monthly"><i class="bi bi-calendar-month"></i><span><strong>Monthly PDF</strong><small>This month to date</small></span></a>
+      </div>
+    </div>
+    <a class="btn btn-primary" href="{% url 'accounts:settings' %}"><i class="bi bi-pencil-square"></i> Edit Profile</a>
+    <a class="btn btn-danger-ghost" href="{% url 'accounts:logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+  </div>
+</div>
+
+<div class="profile-layout">
+  <section class="card profile-summary">
+    <div class="profile-cover"></div>
+    <div class="profile-summary-body">
+      {% if profile.profile_picture %}
+        <img class="profile-avatar" src="{{ profile.profile_picture.url }}" alt="{{ request.user.username }}'s profile picture">
+      {% else %}
+        <div class="profile-avatar profile-avatar-fallback">{{ request.user.username|first|upper }}</div>
+      {% endif %}
+      <h2>{{ request.user.get_full_name|default:request.user.username }}</h2>
+      <p class="profile-email">{{ request.user.email|default:'No email added' }}</p>
+      <p class="profile-bio">{{ profile.bio|default:'Add a short bio to personalize your profile.' }}</p>
+      <div class="profile-joined"><i class="bi bi-calendar3"></i> Member since {{ profile.created_at|date:'M Y' }}</div>
+    </div>
+  </section>
+
+  <section class="card profile-progress">
+    <div class="card-head"><h2 class="card-title">Your Progress</h2></div>
+    <div class="profile-progress-grid">
+      <div><span>Level</span><strong>{{ profile.get_level }}</strong></div>
+      <div><span>Total XP</span><strong>{{ profile.total_xp }}</strong></div>
+      <div><span>Current streak</span><strong>{{ profile.current_streak }}d</strong></div>
+      <div><span>Best streak</span><strong>{{ profile.longest_streak }}d</strong></div>
+    </div>
+    <div class="profile-score">
+      <div><span>Weekly consistency</span><strong>{{ weekly_consistency_score }}%</strong></div>
+      <div class="score-track"><div style="width:{{ weekly_consistency_score }}%"></div></div>
+    </div>
+  </section>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const button = document.getElementById('exportMenuButton');
+  const menu = document.getElementById('exportMenu');
+  const close = () => { menu.hidden = true; button.setAttribute('aria-expanded', 'false'); };
+  button?.addEventListener('click', () => {
+    const willOpen = menu.hidden;
+    menu.hidden = !willOpen;
+    button.setAttribute('aria-expanded', String(willOpen));
+  });
+  document.addEventListener('click', event => { if (!event.target.closest('.export-dropdown')) close(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
+})();
+</script>
 {% endblock %}
