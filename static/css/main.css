@@ -1716,8 +1716,10 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   .daily-goal-form .btn { min-width: 0; padding-left: 10px; padding-right: 10px; }
   .focus-history-scroll { -webkit-overflow-scrolling: touch; max-height: 360px; overflow-y: auto; }
   .study-history-scroll { -webkit-overflow-scrolling: touch; max-height: 360px; overflow-y: auto; }
-  .dash-grid .task-list { -webkit-overflow-scrolling: touch; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
-  .dash-grid-2 .habit-list, .dash-grid-2 .goal-list, .dash-grid-2 .study-list, .dash-grid-2 .deadline-list { -webkit-overflow-scrolling: touch; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; }
+  /* Let a swipe continue into the document at a list boundary. The list only
+     consumes it while its own content can still scroll. */
+  .dash-grid .task-list { -webkit-overflow-scrolling: touch; max-height: 320px; overflow-y: auto; overscroll-behavior: auto; touch-action: pan-y; }
+  .dash-grid-2 .habit-list, .dash-grid-2 .goal-list, .dash-grid-2 .study-list, .dash-grid-2 .deadline-list { -webkit-overflow-scrolling: touch; max-height: 300px; overflow-y: auto; overscroll-behavior: auto; touch-action: pan-y; }
   .study-history-scroll::-webkit-scrollbar, .dash-grid .task-list::-webkit-scrollbar, .dash-grid-2 .habit-list::-webkit-scrollbar, .dash-grid-2 .goal-list::-webkit-scrollbar, .dash-grid-2 .study-list::-webkit-scrollbar, .dash-grid-2 .deadline-list::-webkit-scrollbar { width: 6px; }
   .study-history-scroll::-webkit-scrollbar-thumb, .dash-grid .task-list::-webkit-scrollbar-thumb, .dash-grid-2 .habit-list::-webkit-scrollbar-thumb, .dash-grid-2 .goal-list::-webkit-scrollbar-thumb, .dash-grid-2 .study-list::-webkit-scrollbar-thumb, .dash-grid-2 .deadline-list::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 999px; }
   .deadline-section .card-head { min-height: 62px; padding: 0 16px; }
