@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from unittest.mock import patch
 
 from .models import Goal, Milestone
 
@@ -38,5 +39,17 @@ class GoalAjaxTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Goal.objects.filter(pk=goal.pk).exists())
         self.assertTrue(Goal.objects.filter(pk=other_goal.pk).exists())
+
+    @patch('notifications.emailing.send_focusforge_email_async')
+    def test_goal_completion_email_is_sent_only_once(self, mock_send_email):
+        goal = Goal.objects.create(user=self.user, title='Goal', deadline='2026-12-31')
+        milestone = Milestone.objects.create(goal=goal, title='Only step')
+        toggle_url = reverse('goals:ajax_milestone_toggle', args=[milestone.pk])
+
+        self.client.post(toggle_url)
+        self.client.post(toggle_url)
+        self.client.post(toggle_url)
+
+        self.assertEqual(mock_send_email.call_count, 1)
 
 # Create your tests here.

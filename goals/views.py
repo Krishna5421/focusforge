@@ -7,6 +7,7 @@ from datetime import datetime
 from django.db.models import Case, When, IntegerField
 from .models import Goal, Milestone
 from .forms import GoalForm, MilestoneForm
+from notifications.models import Notification
 
 
 @login_required
@@ -100,6 +101,10 @@ def record_goal_notifications(milestone):
     notify_once(goal.user, 'MILESTONE_COMPLETED', 'Milestone completed',
                 f'{goal.title}: “{milestone.title}” is complete.', milestone.pk)
     if goal.status == 'COMPLETED':
+        if Notification.objects.filter(
+            user=goal.user, type='GOAL_COMPLETED', related_object_id=goal.pk,
+        ).exists():
+            return
         notify_once(goal.user, 'GOAL_COMPLETED', 'Goal completed!',
                     f'You completed “{goal.title}”.', goal.pk)
         from notifications.emailing import send_focusforge_email_async
