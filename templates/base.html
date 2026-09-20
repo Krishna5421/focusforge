@@ -41,6 +41,9 @@
       <a class="nav-item {% if request.resolver_match.app_name == 'goals' %}active{% endif %}" href="{% url 'goals:goal_list' %}">
         <i class="bi bi-bullseye"></i> Goals
       </a>
+      <a class="nav-item {% if request.resolver_match.url_name == 'deadlines' %}active{% endif %}" href="{% url 'core:deadlines' %}">
+        <i class="bi bi-calendar-event"></i> Deadlines
+      </a>
       <a class="nav-item {% if request.resolver_match.app_name == 'pomodoro' %}active{% endif %}" href="{% url 'pomodoro:pomodoro_page' %}">
         <i class="bi bi-stopwatch"></i> Focus
       </a>
