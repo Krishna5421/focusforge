@@ -12,7 +12,7 @@ from habits.models import Habit, HabitLog
 from goals.models import Goal
 from pomodoro.models import PomodoroSession
 from achievements.models import UserAchievement
-from study.models import StudySession
+from study.models import ActiveStudySession, StudySession
 
 
 def percent_change(current, previous):
@@ -165,7 +165,60 @@ def dashboard(request):
         'recent_achievements': recent_achievements,
         'recent_study_sessions': recent_study_sessions,
     }
+
+    active_pomodoro = PomodoroSession.objects.filter(
+        user=user, status__in=['RUNNING', 'PAUSED'],
+    ).select_related('task').order_by('-started_at').first()
+    context['active_pomodoro'] = active_pomodoro
+    context['active_focus_remaining'] = pomodoro_remaining_seconds(active_pomodoro) if active_pomodoro else 25 * 60
     return render(request, 'core/dashboard.html', context)
+
+
+def pomodoro_remaining_seconds(session, now=None):
+    now = now or timezone.now()
+    elapsed = session.actual_focus_seconds
+    if session.status == 'RUNNING':
+        resumed_at = session.last_resumed_at or session.started_at
+        elapsed += max(0, int((now - resumed_at).total_seconds()))
+    return max(0, session.duration_minutes * 60 - elapsed)
+
+
+@login_required
+def active_timer_state(request):
+    """Return this user's single active focus or study timer for the shared widget."""
+    now = timezone.now()
+    pomodoro = PomodoroSession.objects.filter(
+        user=request.user, status__in=['RUNNING', 'PAUSED'],
+    ).select_related('task').order_by('-started_at').first()
+    study = ActiveStudySession.objects.filter(
+        user=request.user, has_started=True,
+    ).select_related('subject').first()
+
+    if pomodoro and (not study or pomodoro.started_at >= study.updated_at):
+        elapsed = pomodoro.duration_minutes * 60 - pomodoro_remaining_seconds(pomodoro, now)
+        return JsonResponse({
+            'active': True, 'source': 'focus', 'label': 'FOCUS',
+            'title': pomodoro.task.title if pomodoro.task else '',
+            'id': pomodoro.pk, 'running': pomodoro.status == 'RUNNING',
+            'remaining_seconds': pomodoro_remaining_seconds(pomodoro, now),
+            'elapsed_seconds': max(0, elapsed), 'duration_seconds': pomodoro.duration_minutes * 60,
+            'update_url': reverse('pomodoro:pomodoro_update', args=[pomodoro.pk]),
+        })
+    if study:
+        remaining = study.remaining_seconds
+        if study.is_running and study.timer_started_at:
+            remaining = max(0, remaining - int((now - study.timer_started_at).total_seconds()))
+        duration = study.planned_minutes * 60
+        return JsonResponse({
+            'active': True, 'source': 'study', 'label': 'STUDY SESSION',
+            'title': study.subject.name, 'id': study.pk, 'running': study.is_running,
+            'remaining_seconds': remaining, 'elapsed_seconds': max(0, duration - remaining),
+            'duration_seconds': duration,
+            'start_url': reverse('study:active_session_timer', args=['start']),
+            'pause_url': reverse('study:active_session_timer', args=['pause']),
+            'save_url': reverse('study:active_session_save'),
+        })
+    return JsonResponse({'active': False})
 
 
 @login_required
