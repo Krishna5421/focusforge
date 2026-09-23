@@ -499,7 +499,11 @@
   const state = widget.querySelector('.focus-state');
   const ring = widget.querySelector('.focus-ring-fg');
   const circumference = 2 * Math.PI * 90;
-  let seconds = 25 * 60, sessionId = null, interval = null, running = false;
+  let durationSeconds = {{ active_pomodoro.duration_minutes|default:25 }} * 60;
+  let seconds = {{ active_focus_remaining|default:1500 }},
+      sessionId = {{ active_pomodoro.pk|default:'null' }},
+      interval = null,
+      running = {% if active_pomodoro and active_pomodoro.status == 'RUNNING' %}true{% else %}false{% endif %};
   const csrf = '{{ csrf_token }}';
   const endModal = document.getElementById('dashboardEndFocusModal');
   const openEndModal = () => { endModal.classList.add('show'); endModal.setAttribute('aria-hidden', 'false'); };
@@ -507,6 +511,8 @@
 
   async function post(url, data) {
     const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: new URLSearchParams(data) });
+    if (response.redirected && /login/i.test(response.url)) throw new Error('Your sign-in session has expired. Please sign in again.');
+    if (!response.headers.get('content-type')?.includes('application/json')) throw new Error(`The timer request returned a page instead of data (HTTP ${response.status}). Reload the page and try again.`);
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Unable to update focus session.');
     return result;
@@ -515,33 +521,45 @@
   function render() {
     time.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
     ring.style.strokeDasharray = circumference;
-    ring.style.strokeDashoffset = circumference * (seconds / (25 * 60));
+    ring.style.strokeDashoffset = circumference * (seconds / durationSeconds);
     state.textContent = running ? 'Focusing' : sessionId ? 'Paused' : 'Ready to focus';
     state.classList.toggle('active', running);
   }
 
   function controlsForSession() {
-    controls.outerHTML = '<div class="dashboard-focus-controls"><button class="btn btn-primary" id="dashboardFocusSave" type="button"><i class="bi bi-save"></i> Save</button><button class="btn btn-secondary" id="dashboardFocusPause" type="button"><i class="bi bi-pause-fill"></i> Pause</button><button class="btn btn-danger-ghost" id="dashboardFocusEnd" type="button">End</button></div>';
+    controls.outerHTML = `<div class="dashboard-focus-controls"><button class="btn btn-primary" id="dashboardFocusSave" type="button"><i class="bi bi-save"></i> Save</button><button class="btn btn-secondary" id="dashboardFocusPause" type="button"><i class="bi bi-${running ? 'pause' : 'play'}-fill"></i> ${running ? 'Pause' : 'Resume'}</button><button class="btn btn-danger-ghost" id="dashboardFocusEnd" type="button">End</button></div>`;
     widget.querySelector('#dashboardFocusSave').onclick = save;
-    widget.querySelector('#dashboardFocusPause').onclick = pause;
+    widget.querySelector('#dashboardFocusPause').onclick = running ? pause : resume;
     widget.querySelector('#dashboardFocusEnd').onclick = end;
+  }
+
+  function startInterval() {
+    clearInterval(interval);
+    interval = window.setInterval(async () => {
+      seconds = Math.max(0, seconds - 1);
+      render();
+      if (!seconds) {
+        clearInterval(interval); interval = null; running = false;
+        try {
+          await post(`/pomodoro/${sessionId}/update/`, { status: 'COMPLETED', focus_seconds: durationSeconds });
+          sessionId = null;
+          window.location.reload();
+        } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete the focus session.'); }
+      }
+    }, 1000);
   }
 
   async function start(event) {
     event?.preventDefault();
     try {
       const data = await post('{% url "pomodoro:pomodoro_start" %}', { duration: 25 });
-      sessionId = data.session_id; running = true; controlsForSession(); render();
-      interval = window.setInterval(async () => {
-        seconds -= 1;
-        render();
-        if (seconds <= 0) {
-          clearInterval(interval);
-          running = false;
-          await post(`/pomodoro/${sessionId}/update/`, { status: 'COMPLETED', focus_seconds: 1500 });
-          window.location.reload();
-        }
-      }, 1000);
+      sessionId = data.session_id;
+      durationSeconds = (data.duration_minutes || 25) * 60;
+      seconds = data.remaining_seconds ?? 25 * 60;
+      running = data.status !== 'PAUSED';
+      controlsForSession(); render();
+      if (running) startInterval();
+      window.FocusForgeTimer?.refresh();
     } catch (error) {
       window.FocusForge?.apiError(error, 'Unable to update the focus session. Please try again.');
     }
@@ -550,11 +568,12 @@
   async function pause() {
     clearInterval(interval); running = false;
     try {
-      await post(`/pomodoro/${sessionId}/update/`, { status: 'PAUSED', focus_seconds: 1500 - seconds });
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'PAUSED', focus_seconds: durationSeconds - seconds });
       const pauseButton = widget.querySelector('#dashboardFocusPause');
       pauseButton.innerHTML = '<i class="bi bi-play-fill"></i> Resume';
       pauseButton.onclick = resume;
       render();
+      window.FocusForgeTimer?.refresh();
     } catch (error) {
       window.FocusForge?.apiError(error, 'Unable to pause the focus session. Please try again.');
     }
@@ -562,22 +581,14 @@
 
   async function resume() {
     try {
-      await post(`/pomodoro/${sessionId}/update/`, { status: 'RUNNING', focus_seconds: 1500 - seconds });
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'RUNNING', focus_seconds: durationSeconds - seconds });
       running = true;
       const pauseButton = widget.querySelector('#dashboardFocusPause');
       pauseButton.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
       pauseButton.onclick = pause;
       render();
-      interval = window.setInterval(async () => {
-        seconds -= 1;
-        render();
-        if (seconds <= 0) {
-          clearInterval(interval);
-          running = false;
-          await post(`/pomodoro/${sessionId}/update/`, { status: 'COMPLETED', focus_seconds: 1500 });
-          window.location.reload();
-        }
-      }, 1000);
+      startInterval();
+      window.FocusForgeTimer?.refresh();
     } catch (error) {
       window.FocusForge?.apiError(error, 'Unable to resume the focus session. Please try again.');
     }
@@ -588,7 +599,7 @@
   async function save() {
     clearInterval(interval); running = false;
     try {
-      await post(`/pomodoro/${sessionId}/update/`, { status: 'STOPPED', focus_seconds: 1500 - seconds });
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'STOPPED', focus_seconds: durationSeconds - seconds });
       window.FocusForge?.toast('Focus session saved successfully.', 'success');
       window.location.reload();
     } catch (error) {
@@ -599,7 +610,7 @@
   async function confirmEnd() {
     clearInterval(interval);
     try {
-      await post(`/pomodoro/${sessionId}/update/`, { status: 'STOPPED', focus_seconds: 1500 - seconds });
+      await post(`/pomodoro/${sessionId}/update/`, { status: 'STOPPED', focus_seconds: durationSeconds - seconds });
       window.location.reload();
     } catch (error) {
       window.FocusForge?.apiError(error, 'Unable to end the focus session. Please try again.');
@@ -610,15 +621,10 @@
   document.getElementById('dashboardEndFocusCancel').onclick = closeEndModal;
   document.getElementById('dashboardEndFocusClose').onclick = closeEndModal;
   endModal.onclick = event => { if (event.target === endModal) closeEndModal(); };
-  window.addEventListener('pagehide', () => {
-    if (!sessionId || seconds >= 25 * 60) return;
-    fetch(`/pomodoro/${sessionId}/update/`, {
-      method: 'POST', headers: { 'X-CSRFToken': csrf },
-      body: new URLSearchParams({ status: 'STOPPED', focus_seconds: 25 * 60 - seconds }), keepalive: true,
-    });
-  });
-  controls.addEventListener('click', start);
+  if (sessionId) controlsForSession();
+  else controls.addEventListener('click', start);
   render();
+  if (running && sessionId) startInterval();
 })();
 </script>
 {% endblock %}
