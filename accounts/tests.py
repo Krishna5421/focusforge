@@ -19,7 +19,7 @@ class ProfileTests(TestCase):
 
     def test_profile_edit_updates_user_and_bio(self):
         response = self.client.post(reverse('accounts:settings'), {
-            'first_name': 'Krishna', 'last_name': 'Kumar', 'username': 'krishna',
+            'first_name': 'Krishna', 'last_name': 'Yadav', 'username': 'krishna',
             'email': 'krishna@example.com', 'bio': 'Building better routines.',
         })
 
@@ -59,7 +59,7 @@ class AuthenticationValidationTests(TestCase):
         response = self.client.post(reverse('accounts:register'), {
             'username': '_not_allowed',
             'first_name': 'Krishna',
-            'last_name': 'Kumar',
+            'last_name': 'Yadav',
             'email': 'krishna@example.com',
             'password1': 'secure-password-123',
             'password2': 'secure-password-123',
@@ -75,7 +75,7 @@ class AuthenticationValidationTests(TestCase):
         response = self.client.post(reverse('accounts:register'), {
             'username': 'already-used',
             'first_name': 'Krishna',
-            'last_name': 'Kumar',
+            'last_name': 'Yadav',
             'email': 'krishna@example.com',
             'password1': 'secure-password-123',
             'password2': 'secure-password-123',
@@ -83,6 +83,22 @@ class AuthenticationValidationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'This username is already in use.')
+
+    def test_duplicate_email_registration_shows_email_field_error(self):
+        User.objects.create_user(username='first-account', password='password', email='same@example.com')
+
+        response = self.client.post(reverse('accounts:register'), {
+            'username': 'different-account',
+            'first_name': 'Krishna',
+            'last_name': 'Yadav',
+            'email': 'SAME@example.com',
+            'password1': 'secure-password-123',
+            'password2': 'secure-password-123',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This email is already registered. Please use a different email or log in.')
+        self.assertEqual(User.objects.filter(email__iexact='same@example.com').count(), 1)
 
 
 class PasswordResetOTPTests(TestCase):
