@@ -186,6 +186,8 @@
   const modal = document.getElementById('sessionModal'),
         post = async (url, data) => {
           const r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: data });
+          if (r.redirected && /login/i.test(r.url)) throw new Error('Your sign-in session has expired. Please sign in again.');
+          if (!r.headers.get('content-type')?.includes('application/json')) throw new Error(`The timer request returned a page instead of data (HTTP ${r.status}). Reload the page and try again.`);
           const j = await r.json();
           if (!r.ok) throw new Error(j.error || 'Unable to save.');
           return j;
@@ -336,6 +338,9 @@
       clearInterval(timer);
       running = false;
       display();
+      post('{% url "study:active_session_timer" "pause" %}', new URLSearchParams())
+        .then(() => window.FocusForgeTimer?.refresh())
+        .catch(err => window.FocusForge?.apiError(err, 'Unable to pause the completed study timer.'));
     }
   };
 
@@ -345,6 +350,7 @@
       running = true;
       display();
       timer = setInterval(tick, 1000);
+      window.FocusForgeTimer?.refresh();
     });
   };
 
@@ -355,6 +361,7 @@
       remaining = j.remaining_seconds;
       running = false;
       display();
+      window.FocusForgeTimer?.refresh();
     });
   };
 
