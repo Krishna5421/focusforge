@@ -24,6 +24,12 @@ class RegisterForm(UserCreationForm):
             raise forms.ValidationError('This username is already in use. Please choose another one.')
         return username
 
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('This email is already registered. Please use a different email or log in.')
+        return email
+
 
 class StyledLoginForm(AuthenticationForm):
     username = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Username'}))
@@ -53,6 +59,12 @@ class UserUpdateForm(forms.ModelForm):
         if User.objects.exclude(pk=self.instance.pk).filter(username__iexact=username).exists():
             raise forms.ValidationError('This username is already in use.')
         return username
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip()
+        if User.objects.exclude(pk=self.instance.pk).filter(email__iexact=email).exists():
+            raise forms.ValidationError('This email is already registered to another account.')
+        return email
 
 
 class PasswordResetRequestForm(forms.Form):
