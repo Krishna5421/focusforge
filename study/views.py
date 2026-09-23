@@ -5,6 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import Subject, StudySession, ActiveStudySession
 from .forms import SubjectForm, StudySessionForm
+from pomodoro.models import PomodoroSession
 
 
 @login_required
@@ -97,6 +98,10 @@ def active_session_setup(request):
     name = request.POST.get('subject_name', '').strip()
     if not name:
         return JsonResponse({'error': 'Enter a subject name.'}, status=400)
+    if ActiveStudySession.objects.filter(user=request.user, has_started=True).exists():
+        return JsonResponse({'error': 'Save or stop your active study session before setting up another one.'}, status=409)
+    if PomodoroSession.objects.filter(user=request.user, status__in=['RUNNING', 'PAUSED']).exists():
+        return JsonResponse({'error': 'Save or stop your active focus session before starting a study session.'}, status=409)
     subject, _ = Subject.objects.get_or_create(user=request.user, name__iexact=name, defaults={'name': name})
     try:
         minutes = int(request.POST.get('planned_minutes', 25))
@@ -110,7 +115,7 @@ def active_session_setup(request):
         defaults={'subject': subject, 'planned_minutes': minutes, 'remaining_seconds': minutes * 60,
                   'notes': request.POST.get('notes', '').strip(), 'resource_name': resource_name,
                   'resource_file': None,
-                  'is_running': False, 'timer_started_at': None},
+                  'is_running': False, 'has_started': False, 'timer_started_at': None},
     )
     return JsonResponse({'id': active.id, 'remaining_seconds': active.remaining_seconds})
 
@@ -123,10 +128,17 @@ def active_session_timer(request, action):
     if request.POST.get('discard') == '1':
         active.delete()
         return JsonResponse({'discarded': True})
+    if action == 'start' and PomodoroSession.objects.filter(user=request.user, status__in=['RUNNING', 'PAUSED']).exists():
+        return JsonResponse({'error': 'Save or stop your active focus session before starting a study timer.'}, status=409)
+    if action == 'start' and active.is_running:
+        return JsonResponse({'remaining_seconds': active_remaining_seconds(active), 'is_running': True})
+    if action == 'pause' and not active.is_running:
+        return JsonResponse({'remaining_seconds': active.remaining_seconds, 'is_running': False})
     remaining = active_remaining_seconds(active)
     if action == 'start':
         active.remaining_seconds = remaining
         active.is_running = True
+        active.has_started = True
         active.timer_started_at = timezone.now()
     elif action == 'pause':
         active.remaining_seconds = remaining

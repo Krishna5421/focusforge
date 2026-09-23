@@ -49,6 +49,7 @@ class ActiveStudySession(models.Model):
     resource_name = models.CharField(max_length=255, blank=True)
     resource_file = models.FileField(upload_to='study_files/', blank=True, null=True)
     is_running = models.BooleanField(default=False)
+    has_started = models.BooleanField(default=False)
     timer_started_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
