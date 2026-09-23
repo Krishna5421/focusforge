@@ -23,7 +23,7 @@
         {% if chat.response %}
           <div class="ai-msg assistant">
             <div class="ai-msg-avatar"><i class="bi bi-stars"></i></div>
-            <div class="ai-msg-bubble">{{ chat.response|linebreaksbr }}</div>
+            <div class="ai-msg-bubble markdown-source">{{ chat.response }}</div>
           </div>
         {% endif %}
       {% endfor %}
@@ -80,6 +80,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script>
 (() => {
   const form = document.getElementById('assistant-form'),
@@ -90,15 +92,87 @@
         usageFill = document.getElementById('usageFill'),
         limit = {{ message_limit }};
 
-  const escape = value => {
-    const el = document.createElement('div');
-    el.textContent = value;
-    return el.innerHTML;
-  };
+  let isThinking = false;
+  let thinkingIndicator = null;
 
   const scroll = () => messages.scrollTop = messages.scrollHeight;
+  const add = (type, text, className = '') => {
+    const row = document.createElement('div');
+    row.className = `ai-msg ${type}`;
+    const avatar = document.createElement('div');
+    avatar.className = 'ai-msg-avatar';
+    avatar.innerHTML = `<i class="bi ${type === 'user' ? 'bi-person-fill' : 'bi-stars'}"></i>`;
+    const bubble = document.createElement('div');
+    bubble.className = `ai-msg-bubble ${className}`.trim();
+    bubble.textContent = text;
+    row.append(avatar, bubble);
+    messages.append(row);
+    return row;
+  };
 
-  const add = (type, text) => messages.insertAdjacentHTML('beforeend', `<div class="ai-msg ${type}"><div class="ai-msg-avatar"><i class="bi ${type==='user'?'bi-person-fill':'bi-stars'}"></i></div><div class="ai-msg-bubble">${escape(text)}</div></div>`);
+  const renderMarkdown = bubble => {
+    if (!window.marked || !window.DOMPurify) return;
+    bubble.innerHTML = DOMPurify.sanitize(marked.parse(bubble.textContent, { breaks: true }));
+    bubble.querySelectorAll('hr').forEach(rule => rule.remove());
+    prepareTables(bubble);
+    bubble.classList.remove('markdown-source');
+  };
+
+  const prepareTables = container => {
+    container.querySelectorAll('table').forEach(table => {
+      const header = table.querySelector('thead tr');
+      const rows = [...table.querySelectorAll('tbody tr')];
+      const headers = header ? [...header.querySelectorAll('th, td')] : [];
+      const isTwoColumnSummary = headers.length === 2 && rows.length > 0 &&
+        rows.every(row => row.querySelectorAll('th, td').length === 2);
+
+      if (isTwoColumnSummary) {
+        table.classList.add('ai-table-cards');
+        return;
+      }
+
+      if (!table.parentElement.classList.contains('ai-table-scroll')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'ai-table-scroll';
+        wrapper.setAttribute('role', 'region');
+        wrapper.setAttribute('aria-label', 'Scrollable table');
+        table.before(wrapper);
+        wrapper.append(table);
+      }
+    });
+  };
+
+  document.querySelectorAll('.markdown-source').forEach(renderMarkdown);
+
+  const showThinking = () => {
+    if (isThinking) return;
+    isThinking = true;
+    const row = document.createElement('div');
+    row.className = 'ai-msg assistant ai-thinking';
+    row.setAttribute('role', 'status');
+    row.setAttribute('aria-live', 'polite');
+    const avatar = document.createElement('div');
+    avatar.className = 'ai-msg-avatar';
+    avatar.innerHTML = '<i class="bi bi-stars" aria-hidden="true"></i>';
+    const indicator = document.createElement('div');
+    indicator.className = 'ai-typing-indicator';
+    const label = document.createElement('span');
+    label.textContent = 'AI is thinking';
+    const dots = document.createElement('span');
+    dots.className = 'ai-typing-dots';
+    dots.setAttribute('aria-hidden', 'true');
+    indicator.append(label, dots);
+    row.append(avatar, indicator);
+    messages.append(row);
+    thinkingIndicator = row;
+    scroll();
+  };
+
+  const hideThinking = () => {
+    thinkingIndicator?.remove();
+    thinkingIndicator = null;
+    isThinking = false;
+  };
 
   async function sendQuestion(question) {
     if (!question || send.disabled) return;
@@ -106,7 +180,7 @@
     input.value = '';
     send.disabled = true;
     send.innerHTML = '<span class="ai-loading"></span>';
-    scroll();
+    showThinking();
     try {
       const response = await fetch('/api/assistant/ask/', {
         method: 'POST',
@@ -117,13 +191,19 @@
         body: JSON.stringify({ question })
       });
       const data = await response.json();
-      add('assistant', data.answer || data.error || 'Unable to get a response.');
+      hideThinking();
+      if (!response.ok) {
+        window.FocusForge?.toast(data.error || 'Unable to get a response. Please try again.', 'error');
+        return;
+      }
+      const answer = add('assistant', data.answer || 'Unable to get a response.', 'markdown-source');
+      renderMarkdown(answer.querySelector('.ai-msg-bubble'));
       if (data.usage !== undefined) {
         usage.textContent = data.usage;
         usageFill.style.width = `${Math.min(100, data.usage / limit * 100)}%`;
       }
     } catch {
-      add('assistant', 'Unable to reach the assistant right now. Please try again.');
+      hideThinking();
       window.FocusForge?.toast('Unable to reach the assistant right now. Please try again.', 'error');
     } finally {
       send.disabled = false;
