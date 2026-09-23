@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
 from tasks.models import Task
+from study.models import ActiveStudySession
 from .models import PomodoroSession, PomodoroSettings
 
 
@@ -33,6 +34,15 @@ def pomodoro_page(request):
     daily_goal = goal.daily_goal
     focus_score = min(100, completed_today * 20)
     tasks = Task.objects.filter(user=request.user).exclude(status='COMPLETED')
+    active_pomodoro = PomodoroSession.objects.filter(
+        user=request.user, status__in=['RUNNING', 'PAUSED'],
+    ).select_related('task').order_by('-started_at').first()
+    active_focus_remaining = 25 * 60
+    if active_pomodoro:
+        active_elapsed = active_pomodoro.actual_focus_seconds
+        if active_pomodoro.status == 'RUNNING':
+            active_elapsed += max(0, int((timezone.now() - (active_pomodoro.last_resumed_at or active_pomodoro.started_at)).total_seconds()))
+        active_focus_remaining = max(0, active_pomodoro.duration_minutes * 60 - active_elapsed)
     return render(request, 'pomodoro/pomodoro.html', {
         'recent_sessions': recent_sessions,
         'tasks': tasks,
@@ -44,6 +54,8 @@ def pomodoro_page(request):
         'focus_score': focus_score,
         'score_change': focus_score - min(100, completed_yesterday * 20),
         'streak': streak,
+        'active_pomodoro': active_pomodoro,
+        'active_focus_remaining': active_focus_remaining,
     })
 
 
@@ -78,11 +90,25 @@ def pomodoro_start(request):
         return JsonResponse({'error': 'Session duration must be between 5 and 120 minutes.'}, status=400)
     task = get_object_or_404(Task, pk=task_id, user=request.user) if task_id else None
 
+    active = PomodoroSession.objects.filter(user=request.user, status__in=['RUNNING', 'PAUSED']).order_by('-started_at').first()
+    if active:
+        elapsed = active.actual_focus_seconds
+        if active.status == 'RUNNING':
+            elapsed += max(0, int((timezone.now() - (active.last_resumed_at or active.started_at)).total_seconds()))
+        return JsonResponse({
+            'session_id': active.pk, 'status': active.status,
+            'remaining_seconds': max(0, active.duration_minutes * 60 - elapsed),
+            'duration_minutes': active.duration_minutes, 'existing': True,
+        })
+    if ActiveStudySession.objects.filter(user=request.user, has_started=True).exists():
+        return JsonResponse({'error': 'Save or stop your active study session before starting a focus session.'}, status=409)
+
     session = PomodoroSession.objects.create(
         user=request.user,
         task=task,
         duration_minutes=duration,
         status='RUNNING',
+        last_resumed_at=timezone.now(),
     )
     return JsonResponse({'session_id': session.id, 'status': session.status})
 
@@ -105,6 +131,7 @@ def pomodoro_update(request, pk):
 
     session.status = new_status
     session.actual_focus_seconds = focus_seconds
+    session.last_resumed_at = timezone.now() if new_status == 'RUNNING' else None
 
     if new_status == 'COMPLETED':
         session.completed_at = timezone.now()
