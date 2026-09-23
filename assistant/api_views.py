@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
-from .utils import ask_assistant, check_rate_limit, MAX_QUERIES
+from .utils import AssistantError, ask_assistant, check_rate_limit, MAX_QUERIES
 from .models import AIQueryLog
 from django.utils import timezone
 
@@ -22,6 +22,9 @@ class AssistantQueryAPIView(APIView):
                 'limit': MAX_QUERIES,
             }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
-        answer = ask_assistant(request.user, question)
+        try:
+            answer = ask_assistant(request.user, question)
+        except AssistantError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         usage = AIQueryLog.objects.filter(user=request.user, created_at__date=timezone.localdate()).count()
         return Response({'answer': answer, 'usage': usage, 'limit': MAX_QUERIES})
