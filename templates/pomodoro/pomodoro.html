@@ -47,7 +47,7 @@
       </select>
       <div class="focus-duration-row" id="focusDurationRow">
         <label for="focusDuration">Focus duration</label>
-        <div class="focus-duration-input"><input id="focusDuration" name="duration" type="number" min="5" max="120" value="25" inputmode="numeric"><span>min</span></div>
+        <div class="focus-duration-input"><input id="focusDuration" name="duration" type="number" min="5" max="120" value="{{ active_pomodoro.duration_minutes|default:25 }}" inputmode="numeric"><span>min</span></div>
       </div>
       <div class="focus-big-controls">
         <button class="btn btn-primary" type="submit" id="focusStartBig"><i class="bi bi-play-fill"></i> Start</button>
@@ -115,7 +115,11 @@
     short: { seconds: 5 * 60, label: 'Short break ready', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' },
     long: { seconds: 15 * 60, label: 'Long break ready', button: 'Start break', note: 'Breaks do not count toward your daily focus goal.' }
   };
-  let mode = 'focus', state = 'idle', seconds = 25 * 60, totalSeconds = 25 * 60, sessionId = null, timer = null;
+  let mode = 'focus',
+      state = {% if active_pomodoro %}{% if active_pomodoro.status == 'RUNNING' %}'running'{% else %}'paused'{% endif %}{% else %}'idle'{% endif %},
+      seconds = {{ active_focus_remaining|default:1500 }},
+      totalSeconds = {{ active_pomodoro.duration_minutes|default:25 }} * 60,
+      sessionId = {{ active_pomodoro.pk|default:'null' }}, timer = null;
   const time = document.getElementById('focusTimeBig');
   const stateText = document.getElementById('focusStateBig');
   const ring = document.getElementById('focusRingBig');
@@ -146,7 +150,7 @@
     stateText.classList.toggle('active', state === 'running');
     ringContainer.classList.toggle('is-active-session', state !== 'idle');
     const canSave = mode === 'focus' && sessionId && focusedSeconds() > 0;
-    startButton.innerHTML = canSave ? '<i class="bi bi-save"></i> Save Focus Session' : `<i class="bi bi-play-fill"></i> ${state === 'paused' ? 'Resume' : modes[mode].button}`;
+    startButton.innerHTML = canSave && state !== 'paused' ? '<i class="bi bi-save"></i> Save Focus Session' : `<i class="bi bi-play-fill"></i> ${state === 'paused' ? 'Resume' : modes[mode].button}`;
     startButton.disabled = state === 'stopped' && !canSave;
     pauseButton.disabled = state !== 'running';
     resetButton.disabled = state === 'idle' && !sessionId;
@@ -158,6 +162,8 @@
 
   async function post(url, data) {
     const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: data });
+    if (response.redirected && /login/i.test(response.url)) throw new Error('Your sign-in session has expired. Please sign in again.');
+    if (!response.headers.get('content-type')?.includes('application/json')) throw new Error(`The timer request returned a page instead of data (HTTP ${response.status}). Reload the page and try again.`);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'Unable to save your session.');
     return payload;
@@ -207,7 +213,7 @@
         state = 'idle';
         render();
         if (sessionId) {
-          try { const payload = await saveSession('COMPLETED'); updateSavedSessionUI(payload); sessionId = null; setIdleTime(); window.FocusForge?.toast('Focus session saved successfully.', 'success'); render(); } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete this focus session.'); }
+          try { const payload = await saveSession('COMPLETED'); updateSavedSessionUI(payload); sessionId = null; setIdleTime(); window.FocusForge?.toast('Focus session saved successfully.', 'success'); render(); window.FocusForgeTimer?.refresh(); } catch (error) { window.FocusForge?.apiError(error, 'Unable to complete this focus session.'); }
         }
       } else render();
     }, 1000);
@@ -224,12 +230,13 @@
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (mode === 'focus' && sessionId && focusedSeconds() > 0) {
+    if (mode === 'focus' && sessionId && focusedSeconds() > 0 && state !== 'paused') {
       if (timer) { window.clearInterval(timer); timer = null; }
       try {
         const payload = await saveSession('STOPPED');
         updateSavedSessionUI(payload);
         sessionId = null; state = 'idle'; setIdleTime(); render();
+        window.FocusForgeTimer?.refresh();
         window.FocusForge?.toast('Focus session saved successfully.', 'success');
       } catch (error) { window.FocusForge?.apiError(error, 'Unable to save this focus session.'); }
       return;
@@ -243,16 +250,19 @@
         const data = new URLSearchParams({ duration, task_id: taskSelect.value });
         const payload = await post('{% url "pomodoro:pomodoro_start" %}', data);
         sessionId = payload.session_id;
+        totalSeconds = (payload.duration_minutes || duration) * 60;
+        seconds = payload.remaining_seconds ?? totalSeconds;
       }
       if (sessionId && state === 'paused') await saveSession('RUNNING');
       startClock();
+      window.FocusForgeTimer?.refresh();
     } catch (error) { window.FocusForge?.apiError(error, 'Unable to start the focus session.'); }
   });
 
   pauseButton.addEventListener('click', async () => {
     if (state !== 'running') return;
     window.clearInterval(timer); timer = null;
-    try { await saveSession('PAUSED'); state = 'paused'; render(); }
+    try { await saveSession('PAUSED'); state = 'paused'; render(); window.FocusForgeTimer?.refresh(); }
     catch (error) { window.FocusForge?.apiError(error, 'Unable to pause the focus session.'); startClock(); }
   });
 
@@ -264,10 +274,6 @@
   });
 
   durationInput.addEventListener('change', () => { if (state === 'idle') { setIdleTime(); render(); } });
-  window.addEventListener('pagehide', () => {
-    if (mode === 'focus' && sessionId && focusedSeconds() > 0) saveSession('STOPPED', true);
-  });
-
   document.getElementById('dailyGoalForm').addEventListener('submit', async event => {
     event.preventDefault();
     const message = document.getElementById('dailyGoalMessage');
@@ -280,6 +286,7 @@
     } catch (error) { message.textContent = error.message; window.FocusForge?.apiError(error, 'Unable to save the daily target.'); }
   });
   render();
+  if (sessionId && state === 'running') startClock();
 })();
 </script>
 {% endblock %}
