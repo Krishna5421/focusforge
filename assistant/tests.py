@@ -5,7 +5,8 @@ from django.utils import timezone
 from datetime import timedelta
 
 from .models import AIQueryLog
-from .utils import MAX_QUERIES
+from .utils import MAX_QUERIES, build_user_context
+from tasks.models import Task
 
 
 class AssistantTests(TestCase):
@@ -42,3 +43,15 @@ class AssistantTests(TestCase):
 
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.json()['usage'], MAX_QUERIES)
+
+    def test_context_includes_task_content_for_current_user_only(self):
+        Task.objects.create(user=self.user, title='Learn Django', description='Build a small blog app', priority='HIGH')
+        another_user = User.objects.create_user(username='other-user', password='password')
+        Task.objects.create(user=another_user, title='Private project', description='Do not expose this')
+
+        context = build_user_context(self.user, 'How can I complete Learn Django?')
+
+        self.assertIn('Learn Django', context)
+        self.assertIn('Build a small blog app', context)
+        self.assertNotIn('Private project', context)
+        self.assertNotIn('Do not expose this', context)
