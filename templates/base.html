@@ -123,9 +123,32 @@
   </div>
 </div>
 
+{% if request.user.is_authenticated %}
+<aside class="ff-floating-timer" id="ffFloatingTimer" hidden
+       data-state-url="{% url 'core:active_timer_state' %}" data-csrf="{{ csrf_token }}"
+       aria-label="Active timer" aria-live="polite">
+  <div class="ff-floating-timer-head">
+    <span class="ff-floating-timer-dot"></span>
+    <span id="ffTimerSource">FOCUS</span>
+    <span class="ff-floating-timer-title" id="ffTimerTitle"></span>
+  </div>
+  <div class="ff-floating-timer-controls">
+    <strong class="ff-floating-timer-time" id="ffTimerTime">25:00</strong>
+    <button class="ff-floating-timer-button primary" id="ffTimerToggle" type="button" aria-label="Pause timer" title="Pause or resume timer">
+      <i class="bi bi-pause-fill" aria-hidden="true"></i>
+    </button>
+    <button class="ff-floating-timer-button stop" id="ffTimerSave" type="button" aria-label="Save and stop timer" title="Save and stop">
+      <i class="bi bi-stop-fill" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="ff-floating-timer-track" aria-hidden="true"><span id="ffTimerProgress"></span></div>
+</aside>
+{% endif %}
+
 <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
 <script src="{% static 'js/notifications.js' %}"></script>
 <script src="{% static 'js/live_shell.js' %}"></script>
+{% if request.user.is_authenticated %}<script src="{% static 'js/floating_timer.js' %}"></script>{% endif %}
 {% block extra_js %}{% endblock %}
 </body>
 </html>

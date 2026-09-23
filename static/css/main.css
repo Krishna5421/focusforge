@@ -1307,6 +1307,26 @@ html[data-theme="dark"] .ai-msg.user .ai-msg-bubble { color: #1a1208; }
 .ai-loading { width: 14px; height: 14px; border: 2px solid rgba(0,0,0,.2); border-top-color: currentColor; border-radius: 50%; animation: spin .6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ============ Persistent floating timer ============ */
+.ff-floating-timer[hidden] { display: none !important; }
+.ff-floating-timer { background: color-mix(in srgb, var(--bg-1) 94%, transparent); backdrop-filter: blur(16px); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 16px; bottom: 22px; box-shadow: var(--shadow-lg); color: var(--text-0); padding: 12px 14px 10px; position: fixed; right: 24px; width: min(320px, calc(100vw - 32px)); z-index: 90; }
+.ff-floating-timer-head { align-items: center; color: var(--accent); display: flex; font-size: 11px; font-weight: 750; gap: 7px; letter-spacing: .07em; min-width: 0; text-transform: uppercase; }
+.ff-floating-timer-dot { animation: ff-timer-pulse 1.6s ease-in-out infinite; background: var(--accent); border-radius: 50%; flex: 0 0 7px; height: 7px; }
+.ff-floating-timer.is-paused .ff-floating-timer-dot { animation: none; opacity: .55; }
+.ff-floating-timer-title { color: var(--text-2); font-size: 10px; font-weight: 500; letter-spacing: 0; margin-left: auto; max-width: 56%; overflow: hidden; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
+.ff-floating-timer-controls { align-items: center; display: flex; gap: 9px; margin-top: 3px; }
+.ff-floating-timer-time { flex: 1; font-size: 30px; font-variant-numeric: tabular-nums; font-weight: 750; letter-spacing: .025em; line-height: 1.1; }
+.ff-floating-timer-button { align-items: center; border: 1px solid var(--border-strong); border-radius: 12px; color: var(--text-1); display: inline-flex; flex: 0 0 44px; height: 42px; justify-content: center; transition: background .15s var(--ease), transform .15s var(--ease); width: 44px; }
+.ff-floating-timer-button i { font-size: 18px; }
+.ff-floating-timer-button:hover { background: var(--bg-3); color: var(--text-0); transform: translateY(-1px); }
+.ff-floating-timer-button.primary { background: var(--accent); border-color: var(--accent); color: #1a1208; }
+.ff-floating-timer-button.primary:hover { background: var(--accent-2); }
+.ff-floating-timer-button.stop { background: var(--bg-2); color: var(--text-1); }
+.ff-floating-timer-button:disabled { cursor: wait; opacity: .6; transform: none; }
+.ff-floating-timer-track { background: var(--bg-3); border-radius: 99px; height: 4px; margin-top: 7px; overflow: hidden; }
+.ff-floating-timer-track span { background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: inherit; display: block; height: 100%; transition: width .4s linear; }
+@keyframes ff-timer-pulse { 50% { box-shadow: 0 0 0 4px var(--accent-soft); opacity: .7; } }
+
 /* ============ Modals (shared across all pages) ============ */
 .modal-overlay {
   position: fixed;
@@ -1574,6 +1594,9 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   .content { padding: 16px; }
 }
 @media (max-width: 640px) {
+  .ff-floating-timer { bottom: calc(76px + env(safe-area-inset-bottom)); padding: 10px 12px 9px; right: 12px; width: min(292px, calc(100vw - 24px)); }
+  .ff-floating-timer-time { font-size: 27px; }
+  .ff-floating-timer-button { flex-basis: 40px; height: 38px; width: 40px; }
   .ai-chat { min-width: 0; }
   .ai-messages { padding: 14px; }
   .ai-msg.assistant { width: 100%; }
