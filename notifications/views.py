@@ -1,7 +1,30 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
+from django.db import transaction
 from .models import Notification
+
+
+@login_required
+def pending_achievement_toasts(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Invalid method.'}, status=405)
+    with transaction.atomic():
+        pending = list(Notification.objects.select_for_update().filter(
+            user=request.user,
+            type='ACHIEVEMENT_UNLOCKED',
+            toast_pending=True,
+        ).order_by('created_at')[:10])
+        if pending:
+            Notification.objects.filter(
+                user=request.user,
+                pk__in=[notification.pk for notification in pending],
+                toast_pending=True,
+            ).update(toast_pending=False)
+    return JsonResponse({'notifications': [
+        {'id': item.pk, 'title': item.title, 'message': item.message}
+        for item in pending
+    ]})
 
 
 @login_required
