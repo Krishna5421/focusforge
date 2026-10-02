@@ -16,7 +16,7 @@ class HabitAjaxTests(TestCase):
 
     def test_ajax_create_creates_habit_for_current_user(self):
         response = self.client.post(reverse('habits:ajax_habit_create'), {
-            'name': 'Read daily', 'category': 'study', 'frequency': 'DAILY', 'target_days': '1,2,3',
+            'name': 'Read daily', 'category': 'study', 'frequency': 'WEEKLY', 'target_days': '1,2,3',
         })
         self.assertEqual(response.status_code, 200)
         habit = Habit.objects.get(name='Read daily')

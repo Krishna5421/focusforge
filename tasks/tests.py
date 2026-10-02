@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Category, Task
 
@@ -17,7 +20,7 @@ class TaskAjaxTests(TestCase):
             'title': 'Write release notes',
             'category': self.category.pk,
             'priority': 'HIGH',
-            'due_date': '2026-09-04',
+            'due_date': (timezone.localdate() + timedelta(days=7)).isoformat(),
             'tags': 'release, urgent',
         })
 
@@ -49,5 +52,28 @@ class TaskAjaxTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Task.objects.filter(pk=own_task.pk).exists())
         self.assertTrue(Task.objects.filter(pk=other_task.pk).exists())
+
+    def test_ajax_update_keeps_existing_overdue_date(self):
+        overdue = timezone.now() - timedelta(days=3)
+        task = Task.objects.create(user=self.user, title='Overdue', due_date=overdue)
+
+        response = self.client.post(reverse('tasks:ajax_task_update', args=[task.pk]), {
+            'title': 'Overdue renamed',
+            'due_date': timezone.localtime(overdue).date().isoformat(),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.title, 'Overdue renamed')
+
+    def test_ajax_update_rejects_new_past_date(self):
+        task = Task.objects.create(user=self.user, title='Upcoming')
+
+        response = self.client.post(reverse('tasks:ajax_task_update', args=[task.pk]), {
+            'title': 'Upcoming',
+            'due_date': (timezone.localdate() - timedelta(days=1)).isoformat(),
+        })
+
+        self.assertEqual(response.status_code, 400)
 
 # Create your tests here.
