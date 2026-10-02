@@ -1,7 +1,7 @@
 from .models import Achievement, UserAchievement
 from tasks.models import Task
-from habits.models import Habit
-from goals.models import Goal
+from habits.models import Habit, HabitLog
+from goals.models import Goal, Milestone
 from study.models import StudySession
 from pomodoro.models import PomodoroSession
 
@@ -40,8 +40,10 @@ def unlock_achievement(user, achievement):
         profile.total_xp += achievement.xp_reward
         profile.save()
         from notifications.utils import notify_once
-        notify_once(user, 'ACHIEVEMENT_UNLOCKED', 'Achievement unlocked!',
-                    f'{achievement.name} · +{achievement.xp_reward} XP earned.', achievement.pk)
+        notification = notify_once(user, 'ACHIEVEMENT_UNLOCKED', 'Achievement unlocked!',
+                                   f'{achievement.name} · +{achievement.xp_reward} XP earned.', achievement.pk)
+        from notifications.models import Notification
+        Notification.objects.filter(pk=notification.pk).update(toast_pending=True)
         return True
     return False
 
@@ -68,6 +70,20 @@ def check_streak_achievements(user):
             unlock_achievement(user, achievement)
 
 
+def check_habit_checkin_achievements(user):
+    completed_checkins = HabitLog.objects.filter(habit__user=user, completed=True).count()
+    for achievement in Achievement.objects.filter(criteria_type='HABIT_CHECKINS'):
+        if completed_checkins >= achievement.criteria_value:
+            unlock_achievement(user, achievement)
+
+
+def check_milestone_achievements(user):
+    completed_milestones = Milestone.objects.filter(goal__user=user, is_completed=True).count()
+    for achievement in Achievement.objects.filter(criteria_type='MILESTONES_COMPLETED'):
+        if completed_milestones >= achievement.criteria_value:
+            unlock_achievement(user, achievement)
+
+
 def check_goal_achievements(user):
     completed_count = Goal.objects.filter(user=user, status='COMPLETED').count()
     achievements = Achievement.objects.filter(criteria_type='GOALS_COMPLETED')
@@ -85,9 +101,15 @@ def check_study_achievements(user):
         if session_count >= achievement.criteria_value:
             unlock_achievement(user, achievement)
 
+    study_minutes = sum(StudySession.objects.filter(user=user).values_list('duration_minutes', flat=True))
+    for achievement in Achievement.objects.filter(criteria_type='STUDY_MINUTES'):
+        if study_minutes >= achievement.criteria_value:
+            unlock_achievement(user, achievement)
+
 
 def check_focus_achievements(user):
     sessions = PomodoroSession.objects.filter(user=user, status='COMPLETED')
+    completed_session_count = sessions.count()
     total_seconds = 0
     for session in sessions:
         total_seconds += session.actual_focus_seconds
@@ -99,10 +121,16 @@ def check_focus_achievements(user):
         if total_hours >= achievement.criteria_value:
             unlock_achievement(user, achievement)
 
+    for achievement in Achievement.objects.filter(criteria_type='FOCUS_SESSIONS'):
+        if completed_session_count >= achievement.criteria_value:
+            unlock_achievement(user, achievement)
+
 
 def check_all_achievements(user):
     check_task_achievements(user)
     check_streak_achievements(user)
+    check_habit_checkin_achievements(user)
     check_goal_achievements(user)
+    check_milestone_achievements(user)
     check_study_achievements(user)
     check_focus_achievements(user)
