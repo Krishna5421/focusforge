@@ -80,17 +80,6 @@ def habit_create(request):
         if form.is_valid():
             habit = form.save(commit=False)
             habit.user = request.user
-            
-            # Handle target_days if it's a comma-separated string from form
-            target_days = request.POST.get('target_days', '')
-            if target_days:
-                try:
-                    habit.target_days = [int(day.strip()) for day in target_days.split(',') if day.strip().isdigit()]
-                except ValueError:
-                    habit.target_days = []
-            else:
-                habit.target_days = []
-                
             habit.save()
             messages.success(request, 'Habit created successfully.')
             return redirect('habits:habit_list')
@@ -206,11 +195,15 @@ def save_habit_from_request(request, habit=None):
     if frequency not in dict(Habit.FREQUENCY_CHOICES):
         frequency = 'DAILY'
 
-    target_days = []
-    for value in request.POST.get('target_days', '').split(','):
-        value = value.strip()
-        if value.isdigit() and 1 <= int(value) <= 7:
-            target_days.append(int(value))
+    target_values = request.POST.getlist('target_days')
+    # Continue accepting existing comma-separated form/API submissions while
+    # validating every day and storing only integers in JSONField.
+    target_values = [part.strip() for value in target_values for part in value.split(',') if part.strip()]
+    if any(not value.isdigit() or not 1 <= int(value) <= 7 for value in target_values):
+        return None, 'Choose weekdays from Monday (1) through Sunday (7).'
+    target_days = sorted({int(value) for value in target_values})
+    if frequency == 'DAILY' and target_days:
+        return None, 'Target days only apply to weekly habits. Choose Weekly or clear the selected days.'
 
     habit = habit or Habit(user=request.user)
     habit.name = name

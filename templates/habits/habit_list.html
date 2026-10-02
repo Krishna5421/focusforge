@@ -104,9 +104,17 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Target days (optional)</label>
-          <input class="form-input" name="target_days" placeholder="1,2,3,4,5 for Monday to Friday">
-          <small style="color:var(--text-2)">Use 1 for Monday through 7 for Sunday.</small>
+          <span class="form-label">Target days (optional)</span>
+          <div class="habit-target-days" aria-label="Choose target weekdays">
+            <label class="habit-target-day"><input type="checkbox" name="target_days" value="1"><span>Mon</span></label>
+            <label class="habit-target-day"><input type="checkbox" name="target_days" value="2"><span>Tue</span></label>
+            <label class="habit-target-day"><input type="checkbox" name="target_days" value="3"><span>Wed</span></label>
+            <label class="habit-target-day"><input type="checkbox" name="target_days" value="4"><span>Thu</span></label>
+            <label class="habit-target-day"><input type="checkbox" name="target_days" value="5"><span>Fri</span></label>
+            <label class="habit-target-day"><input type="checkbox" name="target_days" value="6"><span>Sat</span></label>
+            <label class="habit-target-day"><input type="checkbox" name="target_days" value="7"><span>Sun</span></label>
+          </div>
+          <small class="habit-target-help">Weekly: selected days count toward consistency. None selected means once per week. Daily habits count all 7 days.</small>
         </div>
         <div class="form-error" id="habitFormError" hidden></div>
       </div>
@@ -154,7 +162,10 @@ function openHabitModal(row) {
     habitForm.name.value = row.dataset.name;
     habitForm.category.value = row.dataset.category;
     habitForm.frequency.value = row.dataset.frequency;
-    habitForm.target_days.value = row.dataset.targetDays;
+    const targetDays = row.dataset.targetDays.split(',').filter(Boolean);
+    habitForm.querySelectorAll('[name="target_days"]').forEach(input => {
+      input.checked = targetDays.includes(input.value);
+    });
   }
   habitModal.classList.add('show');
   habitForm.name.focus();
@@ -166,6 +177,31 @@ document.getElementById('newHabitButton').onclick = () => openHabitModal();
 document.getElementById('closeHabitModal').onclick = closeHabitModal;
 document.getElementById('cancelHabitModal').onclick = closeHabitModal;
 habitModal.onclick = e => { if (e.target === habitModal) closeHabitModal(); };
+
+const activityHeatmap = document.querySelector('.heatmap');
+activityHeatmap?.addEventListener('click', e => {
+  const cell = e.target.closest('.heatmap-cell');
+  if (!cell) return;
+  activityHeatmap.querySelectorAll('.is-tooltip-visible').forEach(active => {
+    if (active !== cell) active.classList.remove('is-tooltip-visible');
+  });
+  const showTooltip = !cell.classList.contains('is-tooltip-visible');
+  cell.classList.toggle('is-tooltip-visible', showTooltip);
+  if (showTooltip) {
+    const rect = cell.getBoundingClientRect(), maxLeft = Math.max(12, window.innerWidth - 192);
+    const left = Math.min(maxLeft, Math.max(12, rect.left + rect.width / 2 - 90));
+    cell.style.setProperty('--heatmap-tooltip-left', `${left}px`);
+    cell.style.setProperty('--heatmap-tooltip-top', `${Math.max(8, rect.top - 42)}px`);
+  }
+});
+document.addEventListener('click', e => {
+  if (activityHeatmap && !activityHeatmap.contains(e.target)) {
+    activityHeatmap.querySelectorAll('.is-tooltip-visible').forEach(cell => cell.classList.remove('is-tooltip-visible'));
+  }
+});
+window.addEventListener('scroll', () => {
+  activityHeatmap?.querySelectorAll('.is-tooltip-visible').forEach(cell => cell.classList.remove('is-tooltip-visible'));
+}, { capture: true, passive: true });
 
 habitForm.onsubmit = async e => {
   e.preventDefault();

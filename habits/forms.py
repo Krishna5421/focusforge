@@ -3,12 +3,12 @@ from .models import Habit
 
 
 class HabitForm(forms.ModelForm):
-    target_days = forms.CharField(
+    target_days = forms.MultipleChoiceField(
         required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-input',
-            'placeholder': 'e.g., 1,2,3,4,5 (Mon-Fri) or leave blank for every day'
-        })
+        choices=[(1, 'Monday (1)'), (2, 'Tuesday (2)'), (3, 'Wednesday (3)'),
+                 (4, 'Thursday (4)'), (5, 'Friday (5)'), (6, 'Saturday (6)'),
+                 (7, 'Sunday (7)')],
+        widget=forms.CheckboxSelectMultiple,
     )
 
     class Meta:
@@ -23,15 +23,16 @@ class HabitForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk and self.instance.target_days:
-            self.initial['target_days'] = ','.join(str(d) for d in self.instance.target_days)
+            self.initial['target_days'] = [str(day) for day in self.instance.target_days]
 
     def clean_target_days(self):
-        value = self.cleaned_data.get('target_days', '')
-        if not value:
-            return []
-        days = []
-        for part in value.split(','):
-            part = part.strip()
-            if part.isdigit() and 1 <= int(part) <= 7:
-                days.append(int(part))
-        return days
+        return sorted({int(day) for day in self.cleaned_data.get('target_days', [])})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('frequency') == 'DAILY' and cleaned_data.get('target_days'):
+            self.add_error(
+                'target_days',
+                'Target days only apply to weekly habits. Choose Weekly or clear the selected days.',
+            )
+        return cleaned_data

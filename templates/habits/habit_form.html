@@ -32,9 +32,14 @@
       {{ form.frequency }}
     </div>
     <div class="form-group">
-      <label>Target days</label>
-      {{ form.target_days }}
-      <small>1=Monday through 7=Sunday. Leave blank for every day.</small>
+      <span class="form-label">Target days (optional)</span>
+      <div class="habit-target-days form-target-days">
+        {% for checkbox in form.target_days %}
+          <label class="habit-target-day">{{ checkbox.tag }}<span>{{ checkbox.choice_label }}</span></label>
+        {% endfor %}
+      </div>
+      {{ form.target_days.errors }}
+      <small class="habit-target-help">Weekly: selected days count toward consistency. None selected means once per week. Daily habits count all 7 days.</small>
     </div>
     <button class="btn btn-primary" type="submit">{% if habit %}Save Changes{% else %}Create Habit{% endif %}</button>
   </form>
