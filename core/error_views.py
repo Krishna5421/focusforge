@@ -33,6 +33,16 @@ def permission_denied(request, exception=None):
     return _error_response(request, 403, 'Access denied', 'You do not have permission to view this page.')
 
 
+def csrf_failure(request, reason=''):
+    """Show a friendly response when Django rejects a request's CSRF token."""
+    return _error_response(
+        request,
+        403,
+        'Request could not be verified',
+        'For your security, we could not verify that request. Refresh the page and try again.',
+    )
+
+
 def page_not_found(request, exception=None):
     return _error_response(request, 404, 'Page not found', 'The page you requested does not exist or may have moved.')
 

@@ -53,6 +53,8 @@ if render_hostname:
     if render_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_origin)
 
+CSRF_FAILURE_VIEW = 'core.error_views.csrf_failure'
+
 
 # Application definition
 
