@@ -1,87 +1,106 @@
 {% extends 'base.html' %}
 
-{% block title %}Achievements &middot; FocusForge{% endblock %}
+{% block title %}Achievements · FocusForge{% endblock %}
 {% block topbar_title %}Achievements{% endblock %}
-{% block topbar_subtitle %}Recognizing the milestones you've earned{% endblock %}
+{% block topbar_subtitle %}Milestones that celebrate your progress{% endblock %}
 
 {% block content %}
-<div class="page-head">
+<div class="page-head achievements-page-head">
   <div>
+    <span class="achievements-eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> YOUR PROGRESS, RECOGNIZED</span>
     <h1>Achievements</h1>
-    <p>Recognizing the milestones you've earned.</p>
+    <p>Every focused session and finished goal adds up. See what you’ve earned and what you’re building toward.</p>
   </div>
+  <div class="achievements-count-badge"><i class="bi bi-award" aria-hidden="true"></i><strong>{{ unlocked|length }}</strong><span>of {{ catalog|length }} unlocked</span></div>
 </div>
 
-<section class="xp-card achievements-xp-card">
-  <div class="xp-top">
-    <div>
-      <div class="xp-label">Total XP</div>
-      <div class="xp-value">{{ request.user.profile.total_xp }}</div>
+<section class="xp-card achievements-xp-card" aria-label="Experience and level progress">
+  <div class="achievements-xp-main">
+    <div class="achievements-xp-copy">
+      <span class="xp-label">TOTAL EXPERIENCE</span>
+      <div class="xp-value">{{ request.user.profile.total_xp }} <small>XP</small></div>
+      <span class="achievements-level-caption">Level {{ request.user.profile.get_level }} · FocusForge Forger</span>
     </div>
-    <div class="xp-level-badge">Level {{ request.user.profile.get_level }} · Forger</div>
+    <div class="achievements-level-mark"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i><span>LEVEL</span><strong>{{ request.user.profile.get_level }}</strong></div>
   </div>
-  <div class="xp-progress">
+  <div class="achievements-xp-progress-head"><span>Progress on current level</span><strong>{{ xp_to_next_level }} XP to Level {{ next_level }}</strong></div>
+  <div class="xp-progress" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ xp_level_progress }}">
     <div class="xp-progress-fill" style="width:{{ xp_level_progress }}%"></div>
   </div>
-  <div class="xp-progress-label">{{ xp_to_next_level }} XP to Level {{ next_level }}</div>
 </section>
 
-<section class="achievement-section">
-  <h2>Unlocked <span>{{ unlocked|length }}</span></h2>
-  <div class="achievements-grid">
-    {% for item in unlocked %}
-      <article class="achievement-card">
-        <div class="achievement-icon unlocked">{{ item.achievement.icon }}</div>
-        <div class="achievement-name">{{ item.achievement.name }}</div>
-        <div class="achievement-desc">
-          {{ item.achievement.get_criteria_type_display }} · {{ item.achievement.criteria_value }}
+<section class="achievement-catalog" aria-labelledby="achievement-catalog-title">
+  <div class="achievement-catalog-head">
+    <div>
+      <span class="achievements-eyebrow">THE MILESTONE COLLECTION</span>
+      <h2 id="achievement-catalog-title">Your journey</h2>
+    </div>
+    <span class="achievement-catalog-count">{{ catalog|length }} milestones</span>
+  </div>
+
+  <div class="achievement-filters" role="group" aria-label="Filter achievements">
+    <button class="achievement-filter active" type="button" data-achievement-filter="all" aria-pressed="true">All <span>{{ catalog|length }}</span></button>
+    <button class="achievement-filter" type="button" data-achievement-filter="focus" aria-pressed="false"><i class="bi bi-stopwatch" aria-hidden="true"></i> Focus</button>
+    <button class="achievement-filter" type="button" data-achievement-filter="study" aria-pressed="false"><i class="bi bi-book" aria-hidden="true"></i> Study</button>
+    <button class="achievement-filter" type="button" data-achievement-filter="habits" aria-pressed="false"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Habits</button>
+    <button class="achievement-filter" type="button" data-achievement-filter="tasks" aria-pressed="false"><i class="bi bi-check2-square" aria-hidden="true"></i> Tasks</button>
+    <button class="achievement-filter" type="button" data-achievement-filter="goals" aria-pressed="false"><i class="bi bi-bullseye" aria-hidden="true"></i> Goals</button>
+  </div>
+
+  <div class="achievements-grid" id="achievementsGrid" aria-live="polite">
+    {% for item in catalog %}
+      <article class="achievement-card {% if item.is_unlocked %}is-unlocked{% else %}is-locked{% endif %}" data-achievement-card data-category="{{ item.category_key }}">
+        <div class="achievement-card-top">
+          <div class="achievement-icon {% if item.is_unlocked %}unlocked{% else %}locked{% endif %}">
+            {% if item.is_unlocked %}{{ item.achievement.icon }}{% else %}<i class="bi bi-lock-fill" aria-hidden="true"></i>{% endif %}
+          </div>
+          <span class="achievement-category-pill">{{ item.category_label }}</span>
         </div>
-        <div class="achievement-xp">+{{ item.achievement.xp_reward }} XP</div>
+        <div class="achievement-name">{{ item.achievement.name }}</div>
+        <p class="achievement-desc">{{ item.target_description }}</p>
+        {% if item.is_unlocked %}
+          <div class="achievement-card-status unlocked-status"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Unlocked</div>
+        {% else %}
+          <div class="achievement-progress">
+            <div class="achievement-progress-label"><span>{{ item.progress_text }}</span></div>
+            <div class="progress-bar" role="progressbar" aria-label="{{ item.achievement.name }} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ item.percent }}"><div class="progress-fill" style="width:{{ item.percent }}%"></div></div>
+          </div>
+        {% endif %}
+        <div class="achievement-card-reward"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> +{{ item.achievement.xp_reward }} XP</div>
       </article>
     {% empty %}
       <div class="achievement-empty">
-        <i class="bi bi-trophy"></i>
-        <strong>No achievements unlocked yet</strong>
-        <span>Complete tasks, habits, focus sessions, or study sessions to earn your first one.</span>
+        <i class="bi bi-stars" aria-hidden="true"></i>
+        <strong>Your milestones are on the way</strong>
+        <span>Keep completing tasks, building habits, studying, and focusing to start your collection.</span>
       </div>
     {% endfor %}
   </div>
+  <div class="achievement-filter-empty" id="achievementFilterEmpty" hidden>No milestones in this category yet.</div>
 </section>
+{% endblock %}
 
-<section class="achievement-section">
-  <h2>Locked <span>{{ locked|length }}</span></h2>
-  <div class="achievements-grid">
-    {% for item in locked %}
-      <article class="achievement-card locked">
-        <div class="achievement-icon locked">
-          <i class="bi bi-lock-fill"></i>
-        </div>
-        <div class="achievement-name">{{ item.achievement.name }}</div>
-        <div class="achievement-desc">
-          {% if item.remaining %}
-            {{ item.remaining }} more {{ item.unit }} to unlock
-          {% else %}
-            Ready to unlock
-          {% endif %}
-        </div>
-        <div class="achievement-progress">
-          <div>
-            <span>{{ item.current }} / {{ item.achievement.criteria_value }}</span>
-            <span>{{ item.percent }}%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:{{ item.percent }}%"></div>
-          </div>
-        </div>
-        <div class="achievement-xp">+{{ item.achievement.xp_reward }} XP</div>
-      </article>
-    {% empty %}
-      <div class="achievement-empty">
-        <i class="bi bi-stars"></i>
-        <strong>Everything is unlocked</strong>
-        <span>You have completed every achievement currently available.</span>
-      </div>
-    {% endfor %}
-  </div>
-</section>
+{% block extra_js %}
+<script>
+(() => {
+  const filters = [...document.querySelectorAll('[data-achievement-filter]')];
+  const cards = [...document.querySelectorAll('[data-achievement-card]')];
+  const empty = document.getElementById('achievementFilterEmpty');
+  filters.forEach(button => button.addEventListener('click', () => {
+    const category = button.dataset.achievementFilter;
+    let visible = 0;
+    filters.forEach(filter => {
+      const selected = filter === button;
+      filter.classList.toggle('active', selected);
+      filter.setAttribute('aria-pressed', String(selected));
+    });
+    cards.forEach(card => {
+      const show = category === 'all' || card.dataset.category === category;
+      card.hidden = !show;
+      if (show) visible += 1;
+    });
+    empty.hidden = visible > 0;
+  }));
+})();
+</script>
 {% endblock %}
