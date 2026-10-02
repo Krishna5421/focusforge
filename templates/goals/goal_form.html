@@ -28,9 +28,16 @@
       {{ form.description }}
     </div>
     <div class="form-group">
+      <label>Milestones *</label>
+      {{ form.milestones }}
+      {{ form.milestones.errors }}
+      <small class="form-help">Add at least one step, with one milestone per line.</small>
+    </div>
+    <div class="form-group">
       <label>Deadline *</label>
       {{ form.deadline }}
       {{ form.deadline.errors }}
+      <small class="form-help">Choose today or a future deadline.</small>
     </div>
     <button class="btn btn-primary">Create Goal</button>
   </form>

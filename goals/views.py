@@ -33,6 +33,8 @@ def goal_create(request):
             goal = form.save(commit=False)
             goal.user = request.user
             goal.save()
+            for order, title in enumerate(form.cleaned_data['milestones']):
+                Milestone.objects.create(goal=goal, title=title, order=order)
             messages.success(request, 'Goal created successfully.')
             return redirect('goals:goal_detail', pk=goal.pk)
     else:
@@ -125,6 +127,12 @@ def save_goal_from_request(request, goal=None):
         deadline = datetime.strptime(deadline_value, '%Y-%m-%d').date()
     except ValueError:
         return None, 'Enter a valid deadline.'
+    if deadline < timezone.localdate():
+        return None, 'Choose today or a future deadline.'
+
+    titles = milestone_titles(request.POST.get('milestones', ''))
+    if goal is None and not titles:
+        return None, 'Add at least one milestone so you have a clear first step toward your goal.'
 
     goal = goal or Goal(user=request.user)
     goal.title = title
@@ -133,7 +141,6 @@ def save_goal_from_request(request, goal=None):
     goal.save()
 
     old_milestones = {milestone.title: milestone for milestone in goal.milestones.all()}
-    titles = milestone_titles(request.POST.get('milestones', ''))
     kept_ids = []
     for order, title in enumerate(titles):
         milestone = old_milestones.pop(title, None)

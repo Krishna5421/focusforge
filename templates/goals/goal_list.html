@@ -58,7 +58,7 @@
       </div>
     </article>
   {% empty %}
-    <div class="empty" style="padding:64px 24px">
+    <div class="empty goals-empty">
       <h4>No goals yet</h4>
       <p>Create your first goal, add milestones, and track your progress here.</p>
       <button class="btn btn-primary" type="button" id="emptyNewGoalButton">
@@ -67,6 +67,15 @@
     </div>
   {% endfor %}
 </div>
+<template id="emptyGoalsTemplate">
+  <div class="empty goals-empty">
+    <h4>No goals yet</h4>
+    <p>Create your first goal, add milestones, and track your progress here.</p>
+    <button class="btn btn-primary" type="button" id="emptyNewGoalButton">
+      <i class="bi bi-plus-lg"></i>Create your first goal
+    </button>
+  </div>
+</template>
 
 <div class="modal-overlay" id="goalModal">
   <div class="modal">
@@ -86,7 +95,10 @@
         </div>
         <div class="form-group">
           <label class="form-label">Milestones (one per line)</label>
-          <textarea class="form-textarea" name="milestones" rows="5" placeholder="Define measurable steps"></textarea>
+          <div class="milestone-editor">
+            <div class="milestone-line-numbers" id="milestoneLineNumbers" aria-hidden="true">1</div>
+            <textarea class="form-textarea" id="milestoneInput" name="milestones" rows="5" placeholder="Define measurable steps"></textarea>
+          </div>
         </div>
         <div class="form-error" id="goalFormError" hidden></div>
       </div>
@@ -121,8 +133,18 @@ const goalCsrf = '{{ csrf_token }}',
       goalsList = document.getElementById('goalsList'),
       goalModal = document.getElementById('goalModal'),
       goalForm = document.getElementById('goalForm'),
+      milestoneInput = document.getElementById('milestoneInput'),
+      milestoneLineNumbers = document.getElementById('milestoneLineNumbers'),
       deleteGoalModal = document.getElementById('deleteGoalModal');
 let editingGoalId = null, deleteGoalId = null, deleteGoalCard = null;
+
+function updateMilestoneLineNumbers() {
+  const lineCount = Math.max(1, milestoneInput.value.split('\n').length);
+  milestoneLineNumbers.textContent = Array.from({ length: lineCount }, (_, index) => `${index + 1}.`).join('\n');
+  milestoneLineNumbers.scrollTop = milestoneInput.scrollTop;
+}
+milestoneInput.addEventListener('input', updateMilestoneLineNumbers);
+milestoneInput.addEventListener('scroll', updateMilestoneLineNumbers, { passive: true });
 
 function openGoalModal(card) {
   editingGoalId = card?.dataset.goalId || null;
@@ -137,6 +159,7 @@ function openGoalModal(card) {
   } else {
     goalForm.deadline.value = '{% now "Y-m-d" %}';
   }
+  updateMilestoneLineNumbers();
   goalModal.classList.add('show');
   goalForm.title.focus();
 }
@@ -144,7 +167,6 @@ function openGoalModal(card) {
 function closeGoalModal() { goalModal.classList.remove('show'); }
 
 document.getElementById('newGoalButton').onclick = () => openGoalModal();
-document.getElementById('emptyNewGoalButton')?.addEventListener('click', () => openGoalModal());
 document.getElementById('closeGoalModal').onclick = closeGoalModal;
 document.getElementById('cancelGoalModal').onclick = closeGoalModal;
 goalModal.onclick = e => { if (e.target === goalModal) closeGoalModal(); };
@@ -173,6 +195,7 @@ document.getElementById('cancelDeleteGoal').onclick = closeDeleteGoalModal;
 deleteGoalModal.onclick = e => { if (e.target === deleteGoalModal) closeDeleteGoalModal(); };
 
 goalsList.addEventListener('click', async e => {
+  if (e.target.closest('#emptyNewGoalButton')) return openGoalModal();
   const card = e.target.closest('.goal-card');
   if (!card) return;
   if (e.target.closest('.edit-goal')) return openGoalModal(card);
@@ -219,6 +242,9 @@ document.getElementById('confirmDeleteGoal').onclick = async () => {
   const r = await fetch(`/goals/ajax/${deleteGoalId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': goalCsrf } });
   if (r.ok) {
     deleteGoalCard.remove();
+    if (!goalsList.querySelector('.goal-card')) {
+      goalsList.replaceChildren(document.getElementById('emptyGoalsTemplate').content.cloneNode(true));
+    }
     closeDeleteGoalModal();
     window.FocusForge?.toast('Goal deleted successfully.', 'success');
   } else {
