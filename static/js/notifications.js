@@ -1,7 +1,7 @@
 (() => {
-  const durations = { success: 4200, info: 5000, warning: 6500, error: 8500 };
-  const icons = { success: 'bi-check-circle-fill', error: 'bi-exclamation-octagon-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
-  const typeOf = value => ['success', 'error', 'warning', 'info'].includes(value) ? value : 'info';
+  const durations = { success: 4200, info: 5000, warning: 6500, error: 8500, achievement: 6500 };
+  const icons = { success: 'bi-check-circle-fill', error: 'bi-exclamation-octagon-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill', achievement: 'bi-award-fill' };
+  const typeOf = value => ['success', 'error', 'warning', 'info', 'achievement'].includes(value) ? value : 'info';
   const textOf = value => String(value || 'Something went wrong. Please try again.').trim();
   const keyOf = (message, type) => `${type}:${message.toLowerCase()}`;
   const container = () => {

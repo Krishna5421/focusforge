@@ -53,6 +53,12 @@
       const response = await fetch('/api/dashboard-summary/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
       if (!response.ok) return;
       const data = await response.json();
+      const sidebarProgress = document.getElementById('sidebarUserProgress');
+      if (sidebarProgress) {
+        sidebarProgress.textContent = `Level ${data.level} · ${data.total_xp} XP`;
+        sidebarProgress.dataset.level = data.level;
+        sidebarProgress.dataset.xp = data.total_xp;
+      }
       const bell = document.getElementById('notificationBell');
       if (bell) {
         let dot = bell.querySelector('.dot');
@@ -73,15 +79,41 @@
     }
   };
 
+  const refreshAchievementToasts = async () => {
+    try {
+      const response = await fetch('/notifications/achievement-toasts/', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      data.notifications?.forEach(notification => {
+        window.FocusForge?.toast(
+          `${notification.title} ${notification.message}`,
+          'achievement',
+        );
+      });
+    } catch (error) {
+      /* Achievement notifications remain in the notification list if polling fails. */
+    }
+  };
+
   const nativeFetch = window.fetch.bind(window);
   window.fetch = async (...args) => {
     const response = await nativeFetch(...args);
     const options = args[1] || {};
-    if ((options.method || 'GET').toUpperCase() === 'POST') window.setTimeout(() => refreshShell(true), 120);
+    if ((options.method || 'GET').toUpperCase() === 'POST') {
+      window.setTimeout(() => {
+        refreshShell(true);
+        refreshAchievementToasts();
+      }, 120);
+    }
     return response;
   };
 
   window.FocusForge = Object.assign(window.FocusForge || {}, { xpPopup, refreshShell: () => refreshShell(true) });
+  refreshAchievementToasts();
+  window.setInterval(refreshAchievementToasts, 30000);
   const syncSearchPlaceholder = () => document.querySelectorAll('[data-mobile-placeholder]').forEach(input => {
     input.placeholder = window.matchMedia('(max-width: 640px)').matches ? input.dataset.mobilePlaceholder : input.dataset.desktopPlaceholder;
   });
