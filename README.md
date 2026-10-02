@@ -29,6 +29,7 @@ break goals into milestones, run Pomodoro and study sessions, and ask an AI coac
 
 ## Table of contents
 
+- [Why I built it](#why-i-built-it)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [How it works](#how-it-works)
@@ -38,7 +39,18 @@ break goals into milestones, run Pomodoro and study sessions, and ask an AI coac
 - [Deployment on Render](#deployment-on-render)
 - [REST API](#rest-api)
 - [Project structure](#project-structure)
-- [Known limitations](#known-limitations)
+
+---
+
+## Why I built it
+
+My productivity was spread across too many apps: one for to-dos, another for habits, a timer for studying,
+and notes for long-term goals. None of them talked to each other, so I never had one clear answer to the
+question *"what should I work on right now?"*
+
+FocusForge brings all of it into one place. Tasks, habits, goals, focus sessions, and study time share
+the same data, so the dashboard, reminders, reports, and AI coach can see the whole picture. XP, streaks,
+and achievements are there to make showing up every day feel rewarding, not like a chore.
 
 ---
 
@@ -227,13 +239,6 @@ focusforge/
 ├── focusforge/      # Settings and root URLs
 └── build.sh         # Render build script
 ```
-
----
-
-## Known limitations
-
-- **Scheduled reminder emails** (task due soon, goal deadline, the daily check-in) only run when the app is started with `runserver`. On Render's free tier, reminders appear **in-app** instead.
-- PDF reports use Helvetica, so emoji and non-Latin text in task names may not render.
 
 ---
 
