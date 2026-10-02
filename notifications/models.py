@@ -26,6 +26,7 @@ class Notification(models.Model):
     related_object_id = models.IntegerField(null=True, blank=True)
 
     is_read = models.BooleanField(default=False)
+    toast_pending = models.BooleanField(default=False)
     sent_via_email = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
