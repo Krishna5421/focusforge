@@ -4,6 +4,7 @@ from django.utils import timezone
 from achievements.utils import award_xp, remove_xp
 from .models import Task
 from notifications.utils import notify_once
+from achievements.utils import check_task_achievements
 
 
 @receiver(pre_save, sender=Task)
@@ -30,6 +31,7 @@ def update_task_completion(sender, instance, created, **kwargs):
             award_xp(instance.user, 'TASK_COMPLETED')
             Task.objects.filter(pk=instance.pk).update(xp_awarded=True)
         notify_once(instance.user, 'TASK_COMPLETED', 'Task completed', f'You completed “{instance.title}”.', instance.pk)
+        check_task_achievements(instance.user)
 
     if old_status == 'COMPLETED' and instance.status != 'COMPLETED' and instance.xp_awarded:
         remove_xp(instance.user, 'TASK_COMPLETED')

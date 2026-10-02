@@ -5,6 +5,7 @@ from django.utils import timezone
 from .models import HabitLog
 from achievements.utils import award_xp, remove_xp
 from notifications.utils import notify_once
+from achievements.utils import check_streak_achievements, check_habit_checkin_achievements
 
 
 def recalculate_streak(habit):
@@ -53,6 +54,10 @@ def update_streak_on_log(sender, instance, **kwargs):
         streak = instance.habit.current_streak
         notify_once(instance.habit.user, 'STREAK_MILESTONE', 'Streak milestone reached!',
                     f'{instance.habit.name}: {streak}-day streak.', instance.pk)
+
+    if instance.completed:
+        check_streak_achievements(instance.habit.user)
+        check_habit_checkin_achievements(instance.habit.user)
 
 
 @receiver(post_delete, sender=HabitLog)
