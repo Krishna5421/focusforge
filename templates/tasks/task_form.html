@@ -1,8 +1,8 @@
-{% extends 'base.html' %} {% load static %} {% block title %}Task · FocusForge{%
-endblock %} {% block extra_css %}<link
-  rel="stylesheet"
-  href="{% static 'css/main.css' %}"
-/>{% endblock %} {% block content %}
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Task · FocusForge{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/main.css' %}" />{% endblock %}
+{% block content %}
 <div class="page-head">
   <div>
     <a href="{% url 'tasks:task_list' %}">← Tasks</a>
@@ -33,8 +33,10 @@ endblock %} {% block extra_css %}<link
           class="form-input"
           type="date"
           name="due_date"
+          min="{{ today|date:'Y-m-d' }}"
           value="{% if form.instance.due_date %}{{ form.instance.due_date|date:'Y-m-d' }}{% endif %}"
         />
+        <small class="form-help">Choose today or a future date.</small>
       </div>
       <div class="form-group">
         <label>Time</label
@@ -58,7 +60,7 @@ endblock %} {% block extra_css %}<link
       ><input
         class="form-input"
         name="tags"
-        value="{% for tag in form.instance.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}"
+        value="{% if form.instance.pk %}{% for tag in form.instance.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}"
       />
     </div>
     <button class="btn btn-primary" type="submit">Save Task</button>

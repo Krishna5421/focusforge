@@ -1,5 +1,6 @@
-{% extends 'base.html' %} {% block title %}{{ goal.title }} · FocusForge{%
-endblock %} {% block content %}
+{% extends 'base.html' %}
+{% block title %}{{ goal.title }} · FocusForge{% endblock %}
+{% block content %}
 <div class="page-head">
   <div>
     <a class="card-action" href="{% url 'goals:goal_list' %}">← Goals</a>
