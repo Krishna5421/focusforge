@@ -244,7 +244,7 @@ focusforge/
 
 <div align="center">
 
-Made with ☕ and focus by **[Krishna5421](https://github.com/Krishna5421)**
+Built by **Krishna5421** · [GitHub](https://github.com/Krishna5421) · [Live demo](https://focusforge-z9hy.onrender.com)
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a45,100:f5a524&height=110&section=footer&animation=fadeIn" alt="" width="100%">
 
