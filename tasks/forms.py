@@ -6,13 +6,9 @@ class TaskForm(forms.ModelForm):
         model = Task
         fields = [
             'title', 'description', 'category', 'priority', 'status',
-            'due_date', 'parent_task', 'is_repeating', 'repeat_frequency'
+            'parent_task', 'is_repeating', 'repeat_frequency'
             # ⚠️ 'tags' is intentionally removed from here
         ]
-        widgets = {
-            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
-
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)

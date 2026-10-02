@@ -9,6 +9,24 @@ from .models import Task, Category, Tag
 from .forms import TaskForm
 
 
+def keeps_existing_due_date(due_date, existing_due_date):
+    """Allow an overdue task to be edited without forcing its date forward."""
+    return existing_due_date is not None and due_date == timezone.localtime(existing_due_date).date()
+
+
+def parse_form_due_date(request, existing_due_date=None):
+    date_value = request.POST.get('due_date', '').strip()
+    time_value = request.POST.get('due_time', '').strip()
+    if not date_value:
+        return None
+    parsed = datetime.strptime(
+        f"{date_value} {time_value or '23:59'}", '%Y-%m-%d %H:%M'
+    )
+    if parsed.date() < timezone.localdate() and not keeps_existing_due_date(parsed.date(), existing_due_date):
+        raise ValueError('Due date cannot be in the past.')
+    return timezone.make_aware(parsed, timezone.get_current_timezone())
+
+
 @login_required
 def task_list(request):
     for name in ['Work', 'Personal', 'Study', 'Other']:
@@ -126,18 +144,15 @@ def task_create(request):
         form = TaskForm(request.POST, user=request.user)
         
         if form.is_valid():
-            # 1. Save task without committing to get the ID
             task = form.save(commit=False)
             task.user = request.user
-            
-            # 2. Handle separate Date and Time inputs
-            date_val = request.POST.get('due_date')
-            time_val = request.POST.get('due_time')
-            if date_val:
-                if time_val:
-                    task.due_date = datetime.strptime(f"{date_val} {time_val}", "%Y-%m-%d %H:%M")
-                else:
-                    task.due_date = datetime.strptime(date_val, "%Y-%m-%d").replace(hour=23, minute=59)
+            try:
+                task.due_date = parse_form_due_date(request)
+            except ValueError:
+                form.add_error(None, 'Choose today or a future date, and enter a valid time.')
+                return render(request, 'tasks/task_form.html', {
+                    'form': form, 'categories': categories, 'today': timezone.localdate(),
+                })
             
             # 3. Save the task to the database
             task.save()
@@ -161,7 +176,9 @@ def task_create(request):
     else:
         form = TaskForm(user=request.user)
         
-    return render(request, 'tasks/task_form.html', {'form': form, 'categories': categories})
+    return render(request, 'tasks/task_form.html', {
+        'form': form, 'categories': categories, 'today': timezone.localdate(),
+    })
 
 
 @login_required
@@ -170,12 +187,19 @@ def task_update(request, pk):
     if request.method == 'POST':
         form = TaskForm(request.POST, instance=task, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Task updated successfully.')
-            return redirect('tasks:task_list')
+            updated_task = form.save(commit=False)
+            try:
+                updated_task.due_date = parse_form_due_date(request, existing_due_date=task.due_date)
+            except ValueError:
+                form.add_error(None, 'Choose today or a future date, and enter a valid time.')
+            else:
+                updated_task.save()
+                form.save_m2m()
+                messages.success(request, 'Task updated successfully.')
+                return redirect('tasks:task_list')
     else:
         form = TaskForm(instance=task, user=request.user)
-    return render(request, 'tasks/task_form.html', {'form': form})
+    return render(request, 'tasks/task_form.html', {'form': form, 'today': timezone.localdate()})
 
 
 @login_required
@@ -227,10 +251,12 @@ def ajax_delete_task(request, pk):
     return JsonResponse({'success': True})
 
 
-def task_due_date(value):
+def task_due_date(value, existing_due_date=None):
     if not value:
         return None
     due_date = datetime.strptime(value, '%Y-%m-%d').replace(hour=23, minute=59)
+    if due_date.date() < timezone.localdate() and not keeps_existing_due_date(due_date.date(), existing_due_date):
+        raise ValueError('Due date cannot be in the past.')
     return timezone.make_aware(due_date, timezone.get_current_timezone())
 
 
@@ -249,9 +275,9 @@ def save_task_from_request(request, task=None):
         priority = 'MEDIUM'
 
     try:
-        due_date = task_due_date(request.POST.get('due_date'))
+        due_date = task_due_date(request.POST.get('due_date'), task.due_date if task else None)
     except ValueError:
-        return None, 'Enter a valid due date.'
+        return None, 'Choose today or a future due date.'
 
     task = task or Task(user=request.user)
     task.title = title

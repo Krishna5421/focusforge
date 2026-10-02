@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Task, Category, Tag
 
 
@@ -27,6 +28,11 @@ class TaskSerializer(serializers.ModelSerializer):
             'subtask_progress'
         ]
         read_only_fields = ['completed_at', 'created_at', 'updated_at']
+
+    def validate_due_date(self, value):
+        if value is not None and timezone.localtime(value).date() < timezone.localdate():
+            raise serializers.ValidationError('Choose today or a future due date.')
+        return value
 
     def get_subtask_progress(self, obj):
         return obj.subtask_progress()
