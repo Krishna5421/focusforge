@@ -9,6 +9,10 @@ class Achievement(models.Model):
         ('FOCUS_HOURS', 'Focus Hours'),
         ('STUDY_SESSIONS', 'Study Sessions'),
         ('GOALS_COMPLETED', 'Goals Completed'),
+        ('HABIT_CHECKINS', 'Habit Check-ins'),
+        ('MILESTONES_COMPLETED', 'Milestones Completed'),
+        ('FOCUS_SESSIONS', 'Focus Sessions'),
+        ('STUDY_MINUTES', 'Study Time'),
     ]
 
     name = models.CharField(max_length=100)
