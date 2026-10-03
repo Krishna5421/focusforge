@@ -47,3 +47,16 @@ class EmailVerificationOTP(models.Model):
 
     def is_expired(self):
         return timezone.now() >= self.expires_at
+
+
+class PendingEmailChange(models.Model):
+    """A requested new email address, applied only after its code is confirmed."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='pending_email_change')
+    new_email = models.EmailField()
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    sent_at = models.DateTimeField()
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
