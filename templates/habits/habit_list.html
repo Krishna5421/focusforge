@@ -15,38 +15,35 @@
 
 <div class="habits-layout">
   <div class="card">
-    <div class="card-head">
+    <div class="card-head habits-card-head">
       <div class="card-title"><i class="bi bi-heart"></i>Today's Habits</div>
-      <div style="font-size:12px;color:var(--text-2)" id="habitProgress">{{ completed_today_count }} / {{ total_habits }} completed</div>
+      <div class="habit-progress{% if due_total and due_done == due_total %} is-complete{% endif %}">
+        <span id="habitProgress">{% if due_total %}{{ due_done }} / {{ due_total }} done today{% else %}Nothing due today{% endif %}</span>
+        <div class="habit-progress-track"><div id="habitProgressBar" style="width:{{ due_percent }}%"></div></div>
+      </div>
     </div>
+    {% if filter_categories|length > 1 %}
+      <div class="habit-filters" role="group" aria-label="Filter habits by category">
+        <button class="filter-chip active" type="button" data-habit-filter="all" aria-pressed="true">All</button>
+        {% for key, label in filter_categories %}
+          <button class="filter-chip" type="button" data-habit-filter="{{ key }}" aria-pressed="false">{{ label }}</button>
+        {% endfor %}
+      </div>
+    {% endif %}
     <div class="card-body flush">
       <ul class="habit-list mobile-habit-scroll" id="habitsList">
-        {% for habit in habits %}
-          <li class="habit-item"
-              data-habit-id="{{ habit.pk }}"
-              data-name="{{ habit.name|escape }}"
-              data-category="{{ habit.category }}"
-              data-frequency="{{ habit.frequency }}"
-              data-target-days="{{ habit.target_days|join:',' }}">
-            <div class="habit-icon"><i class="bi {{ habit.icon }}"></i></div>
-            <div class="habit-body">
-              <div class="habit-name">{{ habit.name }}</div>
-              <div class="habit-streak">
-                <span class="fire">🔥 <span class="current-streak">{{ habit.current_streak }}</span>d streak</span>
-                <span>Best: <span class="best-streak">{{ habit.longest_streak }}</span>d</span>
-              </div>
-            </div>
-            <div class="habit-actions">
-              <button class="task-action-btn edit-habit" type="button" title="Edit"><i class="bi bi-pencil"></i></button>
-              <button class="task-action-btn delete-habit" type="button" title="Delete"><i class="bi bi-trash"></i></button>
-              <button class="habit-check {% if habit.completed_today %}done{% endif %}" type="button" title="Mark complete">
-                <i class="bi bi-check"></i>
-              </button>
-            </div>
-          </li>
-        {% empty %}
+        {% if due_habits %}
+          <li class="habit-group-label" data-group="due">Due today</li>
+          {% for habit in due_habits %}{% include 'habits/partials/habit_row.html' %}{% endfor %}
+        {% endif %}
+        {% if other_habits %}
+          <li class="habit-group-label" data-group="other">Not today</li>
+          {% for habit in other_habits %}{% include 'habits/partials/habit_row.html' %}{% endfor %}
+        {% endif %}
+        {% if not habits %}
           <li class="empty" style="padding:36px">No habits yet. Add your first routine.</li>
-        {% endfor %}
+        {% endif %}
+        <li class="empty habit-filter-empty" hidden>No habits in this category.</li>
       </ul>
     </div>
   </div>
@@ -54,6 +51,11 @@
   <div class="card">
     <div class="card-head">
       <div class="card-title"><i class="bi bi-calendar3"></i>Monthly Activity</div>
+    </div>
+    <div class="habit-month-summary">
+      <div><strong id="monthCheckins">{{ month.checkins }}</strong><span>check-ins this month</span></div>
+      <div><strong id="monthBestDay">{{ month.best_day_label }}</strong><span id="monthBestLabel">{% if month.best_day %}best day · {{ month.best_count }} done{% else %}best day{% endif %}</span></div>
+      <div><strong id="monthConsistency">{{ month.consistency }}%</strong><span>consistency</span></div>
     </div>
     <div class="heatmap">
       {% for day in activity_days %}
@@ -248,16 +250,52 @@ habitsList.addEventListener('click', async e => {
     row.querySelector('.habit-check').classList.toggle('done', data.completed);
     row.querySelector('.current-streak').textContent = data.streak;
     row.querySelector('.best-streak').textContent = data.longest_streak;
-    document.getElementById('habitProgress').textContent = `${data.completed_today_count} / {{ total_habits }} completed`;
+    row.querySelector('.habit-week-day.today')?.classList.toggle('done', data.completed);
+    const rate = row.querySelector('.habit-rate');
+    if (rate) rate.textContent = data.completion_rate;
+    document.getElementById('habitProgress').textContent = data.due_total ? `${data.due_done} / ${data.due_total} done today` : 'Nothing due today';
+    document.getElementById('habitProgressBar').style.width = `${data.due_total ? Math.round(data.due_done / data.due_total * 100) : 0}%`;
+    document.querySelector('.habit-progress')?.classList.toggle('is-complete', data.all_done);
     const todayCell = document.getElementById('todayHabitActivity');
     if (todayCell) {
       todayCell.className = `heatmap-cell${data.activity_level ? ` l${data.activity_level}` : ''}`;
       todayCell.title = `Today: ${data.activity_count} habits completed`;
     }
-    window.FocusForge?.toast(data.completed ? 'Habit completed' : 'Habit unmarked', data.completed ? 'success' : 'info');
+    if (data.month) {
+      document.getElementById('monthCheckins').textContent = data.month.checkins;
+      document.getElementById('monthBestDay').textContent = data.month.best_day_label;
+      document.getElementById('monthBestLabel').textContent = data.month.best_count ? `best day · ${data.month.best_count} done` : 'best day';
+      document.getElementById('monthConsistency').textContent = `${data.month.consistency}%`;
+    }
+    if (data.completed && data.all_done && row.dataset.due === '1') {
+      window.FocusForge?.toast('🎉 All habits done for today! Great consistency.', 'success');
+    } else {
+      window.FocusForge?.toast(data.completed ? 'Habit completed' : 'Habit unmarked', data.completed ? 'success' : 'info');
+    }
     window.FocusForge?.refreshShell();
   }
 });
+
+document.querySelectorAll('[data-habit-filter]').forEach(chip => chip.addEventListener('click', () => {
+  const category = chip.dataset.habitFilter;
+  document.querySelectorAll('[data-habit-filter]').forEach(other => {
+    other.classList.toggle('active', other === chip);
+    other.setAttribute('aria-pressed', String(other === chip));
+  });
+  let visible = 0;
+  habitsList.querySelectorAll('.habit-item').forEach(item => {
+    item.hidden = category !== 'all' && item.dataset.category !== category;
+    if (!item.hidden) visible += 1;
+  });
+  // Hide a group heading when none of its habits are shown.
+  habitsList.querySelectorAll('.habit-group-label').forEach(label => {
+    let next = label.nextElementSibling, any = false;
+    while (next && next.classList.contains('habit-item')) { if (!next.hidden) any = true; next = next.nextElementSibling; }
+    label.hidden = !any;
+  });
+  const empty = habitsList.querySelector('.habit-filter-empty');
+  if (empty) empty.hidden = visible > 0 || !habitsList.querySelector('.habit-item');
+}));
 
 document.getElementById('confirmDeleteHabit').onclick = async () => {
   if (!deleteHabitId) return;

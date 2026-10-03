@@ -8,25 +8,20 @@ from datetime import datetime, timedelta
 from django.db.models import Count
 from .models import Habit, HabitLog
 from .forms import HabitForm
+from .schedule import annotate_habits, month_summary
 
 
 @login_required
 def habit_list(request):
-    all_habits = Habit.objects.filter(user=request.user, is_active=True)
-    today = timezone.now().date()
+    today = timezone.localdate()
+    all_habits, due_done, due_total = annotate_habits(request.user, today)
 
-    # Annotate ALL habits with today's completion status
-    for habit in all_habits:
-        habit.completed_today = habit.logs.filter(date=today, completed=True).exists()
-
-    # Dashboard Stats (based on ALL habits, before filtering)
-    total_habits = all_habits.count()
+    total_habits = len(all_habits)
     completed_today_count = sum(1 for h in all_habits if h.completed_today)
     active_streaks = sum(1 for h in all_habits if h.current_streak > 0)
     best_streak = max((h.longest_streak for h in all_habits), default=0)
-
-    daily_count = all_habits.filter(frequency='DAILY').count()
-    weekly_count = all_habits.filter(frequency='WEEKLY').count()
+    daily_count = sum(1 for h in all_habits if h.frequency == 'DAILY')
+    weekly_count = total_habits - daily_count
 
     start_date = today - timedelta(days=89)
     completion_counts = {
@@ -49,16 +44,26 @@ def habit_list(request):
             level = min(4, max(1, round((count / total_habits) * 4)))
         activity_days.append({'date': day, 'count': count, 'level': level})
 
+    month = month_summary(request.user, all_habits, today)
+
     habits = all_habits
     search_query = request.GET.get('search', '').strip()
     frequency_filter = request.GET.get('frequency')
     if search_query:
-        habits = habits.filter(name__icontains=search_query)
+        habits = [h for h in habits if search_query.lower() in h.name.lower()]
     if frequency_filter:
-        habits = habits.filter(frequency=frequency_filter)
+        habits = [h for h in habits if h.frequency == frequency_filter]
+
+    category_labels = dict(Habit.CATEGORY_CHOICES)
+    used_categories = sorted({h.category for h in all_habits}, key=lambda key: category_labels.get(key, key))
 
     context = {
         'habits': habits,
+        'due_habits': [h for h in habits if h.due_today],
+        'other_habits': [h for h in habits if not h.due_today],
+        'due_done': due_done,
+        'due_total': due_total,
+        'due_percent': round(due_done / due_total * 100) if due_total else 0,
         'today': today,
         'total_habits': total_habits,
         'completed_today_count': completed_today_count,
@@ -67,7 +72,9 @@ def habit_list(request):
         'daily_count': daily_count,
         'weekly_count': weekly_count,
         'activity_days': activity_days,
+        'month': month,
         'habit_categories': Habit.CATEGORY_CHOICES,
+        'filter_categories': [(key, category_labels.get(key, key).split(' & ')[0]) for key in used_categories],
         'search_query': search_query,
     }
     return render(request, 'habits/habit_list.html', context)
@@ -107,7 +114,7 @@ def habit_update(request, pk):
 def habit_toggle_today(request, pk):
     """Original sync toggle (kept for fallback/non-AJAX use)"""
     habit = get_object_or_404(Habit, pk=pk, user=request.user)
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     log = habit.logs.filter(date=today).first()
     if log:
@@ -144,7 +151,7 @@ def ajax_toggle_habit(request, pk):
         return JsonResponse({'error': 'Invalid method'}, status=405)
     
     habit = get_object_or_404(Habit, pk=pk, user=request.user)
-    today = timezone.now().date()
+    today = timezone.localdate()
     
     # Toggle the log
     log = habit.logs.filter(date=today).first()
@@ -169,11 +176,19 @@ def ajax_toggle_habit(request, pk):
     activity_count = HabitLog.objects.filter(habit__user=request.user, date=today, completed=True).count()
     activity_level = min(4, max(1, round((activity_count / habits.count()) * 4))) if habits.exists() and activity_count else 0
     
+    annotated, due_done, due_total = annotate_habits(request.user, today)
+    this_habit = next((h for h in annotated if h.pk == habit.pk), None)
+
     return JsonResponse({
         'success': True,
         'completed': completed,
         'streak': habit.current_streak,
         'longest_streak': habit.longest_streak,
+        'due_done': due_done,
+        'due_total': due_total,
+        'all_done': bool(due_total) and due_done == due_total,
+        'completion_rate': this_habit.rate if this_habit else 0,
+        'month': {key: value for key, value in month_summary(request.user, annotated, today).items() if key != 'best_day'},
         'completed_today_count': completed_today_count,
         'active_streaks': active_streaks,
         'best_streak': best_streak,
