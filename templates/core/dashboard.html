@@ -103,6 +103,7 @@
             <i class="bi bi-calendar-check"></i>
             <strong>No tasks due today</strong>
             <span>Enjoy the clear schedule.</span>
+            <a class="dashboard-empty-link" href="{% url 'tasks:task_list' %}">Add a task <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
           </li>
         {% endfor %}
       </ul>
@@ -174,6 +175,7 @@
             <i class="bi bi-heart"></i>
             <strong>No active habits</strong>
             <span>Create a habit to see your seven-day activity.</span>
+            <a class="dashboard-empty-link" href="{% url 'habits:habit_list' %}">Add a habit <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
           </li>
         {% endfor %}
       </ul>
@@ -218,6 +220,7 @@
             <i class="bi bi-bullseye"></i>
             <strong>No active goals</strong>
             <span>Create a goal to track progress here.</span>
+            <a class="dashboard-empty-link" href="{% url 'goals:goal_list' %}">Add a goal <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
           </li>
         {% endfor %}
       </ul>
@@ -251,6 +254,7 @@
             <i class="bi bi-book"></i>
             <strong>No study sessions yet</strong>
             <span>Your completed study sessions will appear here.</span>
+            <a class="dashboard-empty-link" href="{% url 'study:study_dashboard' %}">Start studying <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
           </li>
         {% endfor %}
       </ul>
@@ -291,6 +295,7 @@
             <i class="bi bi-calendar-check"></i>
             <strong>No upcoming deadlines</strong>
             <span>Your scheduled tasks and goals will appear here.</span>
+            <a class="dashboard-empty-link" href="{% url 'tasks:task_list' %}">Add a task with a due date <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
           </li>
         {% endfor %}
       </ul>
