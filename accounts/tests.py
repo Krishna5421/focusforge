@@ -40,6 +40,46 @@ class ProfileTests(TestCase):
         self.assertIn('focusforge-weekly-report.pdf', response['Content-Disposition'])
         self.assertTrue(response.content.startswith(b'%PDF'))
 
+    def test_export_monthly_report_with_activity(self):
+        Task.objects.create(user=self.user, title='Done <b>&</b> dusted', status='COMPLETED', completed_at=timezone.now())
+        habit = Habit.objects.create(user=self.user, name='Read', frequency='WEEKLY', target_days=[1, 3, 5])
+        HabitLog.objects.create(habit=habit, date=timezone.localdate(), completed=True)
+
+        response = self.client.get(f'{reverse("accounts:export_data")}?period=monthly')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('focusforge-monthly-report.pdf', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF'))
+
+    def test_export_unknown_period_falls_back_to_weekly(self):
+        response = self.client.get(f'{reverse("accounts:export_data")}?period=yearly')
+        self.assertIn('focusforge-weekly-report.pdf', response['Content-Disposition'])
+
+    def test_export_failure_redirects_with_message(self):
+        with patch('accounts.reports.build_productivity_report', side_effect=RuntimeError('boom')), \
+                self.assertLogs('accounts.views', level='ERROR'):
+            response = self.client.get(reverse('accounts:export_data'), follow=True)
+
+        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertContains(response, 'could not generate your report')
+
+    def test_report_period_bounds_and_deltas(self):
+        from datetime import date
+        from .reports import delta_note, period_bounds
+
+        start, end, previous_start, previous_end, label, compare = period_bounds('monthly', date(2026, 3, 31))
+        self.assertEqual((start, end), (date(2026, 3, 1), date(2026, 3, 31)))
+        self.assertEqual((previous_start, previous_end), (date(2026, 2, 1), date(2026, 2, 28)))
+        self.assertEqual((label, compare), ('March 2026', 'last month'))
+
+        start, end, previous_start, previous_end, _, _ = period_bounds('weekly', date(2026, 10, 2))
+        self.assertEqual((start, end), (date(2026, 9, 28), date(2026, 10, 4)))
+        self.assertEqual((previous_start, previous_end), (date(2026, 9, 21), date(2026, 9, 25)))
+
+        self.assertEqual(delta_note(0, 0, 'last week')[0], 'No activity yet')
+        self.assertEqual(delta_note(5, 3, 'last week')[0], '+2 vs last week')
+        self.assertEqual(delta_note(30, 90, 'last week', minutes=True)[0], '-1h vs last week')
+
     def test_profile_shows_weekly_consistency_from_tasks_and_habits(self):
         today = timezone.localdate()
         Task.objects.create(user=self.user, title='Finished', due_date=timezone.now(), status='COMPLETED')
@@ -136,3 +176,194 @@ class PasswordResetOTPTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No account was found with those details.')
+
+
+class UsernameOrEmailLoginTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='riya', email='Riya@Example.com', password='S3cure-pass!')
+
+    def login(self, identifier, password='S3cure-pass!'):
+        return self.client.post(reverse('accounts:login'), {'username': identifier, 'password': password})
+
+    def test_login_with_username(self):
+        self.assertRedirects(self.login('riya'), reverse('core:dashboard'), fetch_redirect_response=False)
+
+    def test_login_with_email_any_case(self):
+        self.assertRedirects(self.login('  riya@example.COM '), reverse('core:dashboard'), fetch_redirect_response=False)
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
+
+    def test_wrong_password_or_unknown_account_fails(self):
+        for identifier, password in (('riya@example.com', 'wrong'), ('nobody@example.com', 'S3cure-pass!'), ('nobody', 'x')):
+            response = self.login(identifier, password)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertContains(response, 'Incorrect username/email or password')
+
+    def test_inactive_user_cannot_log_in_with_email(self):
+        User.objects.filter(pk=self.user.pk).update(is_active=False)
+        self.login('riya@example.com')
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_duplicate_email_is_refused_instead_of_guessing(self):
+        User.objects.create_user(username='riya2', email='riya@example.com', password='S3cure-pass!')
+        self.login('riya@example.com')
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertRedirects(self.login('riya2'), reverse('core:dashboard'), fetch_redirect_response=False)
+
+    def test_api_token_login_accepts_email(self):
+        response = self.client.post('/api/auth/login/', {'username': 'riya@example.com', 'password': 'S3cure-pass!'},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.json())
+
+
+class EmailVerificationTests(TestCase):
+    REGISTER = {
+        'username': 'newbie', 'first_name': 'New', 'last_name': 'User', 'email': 'newbie@example.com',
+        'password1': 'Str0ng-pass-123', 'password2': 'Str0ng-pass-123',
+    }
+
+    def register(self, code='123456', sent=True):
+        """Sign up while capturing the emailed code (no real email is sent)."""
+        self.codes = []
+
+        def fake_deliver(user, code_sent):
+            self.codes.append(code_sent)
+            return sent
+        with patch('accounts.verification.deliver_code_email', side_effect=fake_deliver):
+            return self.client.post(reverse('accounts:register'), self.REGISTER)
+
+    def user(self):
+        return User.objects.get(username='newbie')
+
+    def test_signup_creates_inactive_account_and_opens_verify_page(self):
+        response = self.register()
+
+        self.assertRedirects(response, reverse('accounts:verify_email'))
+        self.assertFalse(self.user().is_active)
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(len(self.codes), 1)
+        page = self.client.get(reverse('accounts:verify_email'))
+        self.assertContains(page, 'ne****@example.com')
+
+    def test_correct_code_activates_and_logs_in(self):
+        self.register()
+        response = self.client.post(reverse('accounts:verify_email'), {'otp': self.codes[0]})
+
+        self.assertRedirects(response, reverse('core:dashboard'), fetch_redirect_response=False)
+        user = self.user()
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.profile.email_verified)
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+
+    def test_new_account_gets_welcome_email_not_welcome_back(self):
+        self.register()
+        with patch('notifications.emailing.send_focusforge_email_async') as send:
+            self.client.post(reverse('accounts:verify_email'), {'otp': self.codes[0]})
+        self.assertEqual([call.args[1] for call in send.call_args_list], ['Welcome to FocusForge'])
+
+        self.client.logout()
+        with patch('notifications.emailing.send_focusforge_email_async') as send:
+            self.client.post(reverse('accounts:login'), {'username': 'newbie', 'password': 'Str0ng-pass-123'})
+        self.assertEqual([call.args[1] for call in send.call_args_list], ['FocusForge · Welcome back'])
+
+    def test_wrong_code_counts_down_then_locks_and_resends(self):
+        self.register()
+        wrong = '000000' if self.codes[0] != '000000' else '111111'
+        response = self.client.post(reverse('accounts:verify_email'), {'otp': wrong})
+        self.assertContains(response, '4 attempts left')
+
+        from accounts.models import EmailVerificationOTP
+        EmailVerificationOTP.objects.filter(user=self.user()).update(attempts=5, sent_at=timezone.now() - timedelta(minutes=5))
+        with patch('accounts.verification.deliver_code_email', return_value=True) as deliver:
+            response = self.client.post(reverse('accounts:verify_email'), {'otp': self.codes[0]})
+        self.assertContains(response, 'emailed you a new code')
+        deliver.assert_called_once()
+        self.assertFalse(self.user().is_active)
+
+    def test_expired_code_is_rejected(self):
+        self.register()
+        from accounts.models import EmailVerificationOTP
+        EmailVerificationOTP.objects.filter(user=self.user()).update(expires_at=timezone.now() - timedelta(seconds=1))
+        response = self.client.post(reverse('accounts:verify_email'), {'otp': self.codes[0]})
+        self.assertContains(response, 'This code has expired')
+        self.assertFalse(self.user().is_active)
+
+    def test_email_failure_shows_message_and_allows_immediate_resend(self):
+        response = self.register(sent=False)
+        page = self.client.get(response.url)
+        self.assertContains(page, 'couldn&#x27;t send the verification email')
+        self.assertContains(page, 'data-countdown="0"')
+
+    def test_resend_respects_cooldown(self):
+        self.register()
+        with patch('accounts.verification.deliver_code_email', return_value=True) as deliver:
+            response = self.client.post(reverse('accounts:verify_email_resend'), follow=True)
+        self.assertContains(response, 'Please wait')
+        deliver.assert_not_called()
+
+    def test_login_before_verifying_sends_user_to_verify_page(self):
+        self.register()
+        self.client.session.flush()
+        from accounts.models import EmailVerificationOTP
+        EmailVerificationOTP.objects.filter(user=self.user()).update(sent_at=timezone.now() - timedelta(minutes=5))
+        with patch('accounts.verification.deliver_code_email', return_value=True) as deliver:
+            response = self.client.post(reverse('accounts:login'), {'username': 'newbie@example.com', 'password': 'Str0ng-pass-123'})
+        self.assertRedirects(response, reverse('accounts:verify_email'))
+        deliver.assert_called_once()
+
+    def test_wrong_password_for_unverified_account_gives_normal_error(self):
+        self.register()
+        response = self.client.post(reverse('accounts:login'), {'username': 'newbie', 'password': 'nope'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Incorrect username/email or password')
+
+    def test_wrong_email_restart_deletes_pending_signup(self):
+        self.register()
+        response = self.client.post(reverse('accounts:verify_email_restart'))
+        self.assertRedirects(response, reverse('accounts:register'), fetch_redirect_response=False)
+        self.assertFalse(User.objects.filter(username='newbie').exists())
+
+    def test_verify_page_without_session_redirects_to_login(self):
+        response = self.client.get(reverse('accounts:verify_email'))
+        self.assertRedirects(response, reverse('accounts:login'), fetch_redirect_response=False)
+
+    def test_stale_unverified_signup_frees_email_but_others_are_kept(self):
+        self.register()
+        User.objects.filter(username='newbie').update(date_joined=timezone.now() - timedelta(days=2))
+        deactivated = User.objects.create_user('old-admin-made', email='x@example.com', password='x', is_active=False)
+        self.client.session.flush()
+
+        response = self.register()
+        self.assertRedirects(response, reverse('accounts:verify_email'))
+        self.assertEqual(User.objects.filter(email__iexact='newbie@example.com').count(), 1)
+        self.assertTrue(User.objects.filter(pk=deactivated.pk).exists())
+
+    def test_admin_deactivated_account_cannot_verify_itself(self):
+        User.objects.create_user('blocked', email='blocked@example.com', password='Str0ng-pass-123', is_active=False)
+        response = self.client.post(reverse('accounts:login'), {'username': 'blocked', 'password': 'Str0ng-pass-123'})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('email_verification_user_id', self.client.session)
+
+    def test_api_signup_requires_verification(self):
+        codes = []
+        with patch('accounts.verification.deliver_code_email', side_effect=lambda user, code: codes.append(code) or True):
+            response = self.client.post('/api/auth/register/', {
+                'username': 'apiuser', 'email': 'api@example.com', 'password': 'Str0ng-pass-123',
+            }, content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.json()['verification_required'])
+        login = self.client.post('/api/auth/login/', {'username': 'apiuser', 'password': 'Str0ng-pass-123'}, content_type='application/json')
+        self.assertEqual(login.status_code, 401)
+
+        verify = self.client.post('/api/auth/verify-email/', {'email': 'api@example.com', 'code': codes[0]},
+                                  content_type='application/json')
+        self.assertEqual(verify.status_code, 200)
+        login = self.client.post('/api/auth/login/', {'username': 'apiuser', 'password': 'Str0ng-pass-123'}, content_type='application/json')
+        self.assertEqual(login.status_code, 200)
+
+    def test_api_signup_requires_email(self):
+        response = self.client.post('/api/auth/register/', {'username': 'noemail', 'password': 'Str0ng-pass-123'},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('email', response.json())
