@@ -79,22 +79,25 @@
     }
   };
 
-  const refreshAchievementToasts = async () => {
+  // Also triggers the server-side task due-soon/overdue check, since there is no background scheduler.
+  const refreshNotificationToasts = async () => {
     try {
-      const response = await fetch('/notifications/achievement-toasts/', {
+      const response = await fetch('/notifications/toasts/', {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         cache: 'no-store',
       });
       if (!response.ok) return;
       const data = await response.json();
-      data.notifications?.forEach(notification => {
+      const notifications = data.notifications || [];
+      notifications.forEach(notification => {
         window.FocusForge?.toast(
           `${notification.title} ${notification.message}`,
-          'achievement',
+          notification.toast_type || 'achievement',
         );
       });
+      if (notifications.length) refreshShell();
     } catch (error) {
-      /* Achievement notifications remain in the notification list if polling fails. */
+      /* Notifications remain in the notification list if polling fails. */
     }
   };
 
@@ -105,15 +108,25 @@
     if ((options.method || 'GET').toUpperCase() === 'POST') {
       window.setTimeout(() => {
         refreshShell(true);
-        refreshAchievementToasts();
+        refreshNotificationToasts();
       }, 120);
     }
     return response;
   };
 
   window.FocusForge = Object.assign(window.FocusForge || {}, { xpPopup, refreshShell: () => refreshShell(true) });
-  refreshAchievementToasts();
-  window.setInterval(refreshAchievementToasts, 30000);
+  refreshNotificationToasts();
+  window.setInterval(refreshNotificationToasts, 30000);
+  // Open the date/time picker when any part of the box is clicked, not only the icon.
+  document.addEventListener('click', event => {
+    const input = event.target.closest?.('input[type="date"], input[type="time"]');
+    if (!input || input.disabled || input.readOnly || typeof input.showPicker !== 'function') return;
+    try {
+      input.showPicker();
+    } catch (error) {
+      /* Some browsers refuse showPicker (e.g. inside iframes); the icon still works. */
+    }
+  });
   const syncSearchPlaceholder = () => document.querySelectorAll('[data-mobile-placeholder]').forEach(input => {
     input.placeholder = window.matchMedia('(max-width: 640px)').matches ? input.dataset.mobilePlaceholder : input.dataset.desktopPlaceholder;
   });
