@@ -35,3 +35,15 @@ class PasswordResetOTP(models.Model):
 
     def is_expired(self):
         return timezone.now() >= self.expires_at
+
+
+class EmailVerificationOTP(models.Model):
+    """The current sign-up verification code for a not-yet-active account."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='email_verification_otp')
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    sent_at = models.DateTimeField()
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
