@@ -38,7 +38,7 @@
                     <p class="form-error">{{ login_form.non_field_errors.0 }}</p>
                 {% endif %}
 
-                <label for="id_username">Username</label>
+                <label for="id_username">Username or email</label>
                 <div class="input-wrap {% if login_form.username.errors %}has-error{% endif %}">
                     <i class="bi bi-person"></i>
                     {{ login_form.username }}

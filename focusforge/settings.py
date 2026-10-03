@@ -55,6 +55,9 @@ if render_hostname:
 
 CSRF_FAILURE_VIEW = 'core.error_views.csrf_failure'
 
+# Lets users sign in with their username or their email (also used by the JWT login API).
+AUTHENTICATION_BACKENDS = ['accounts.backends.UsernameOrEmailBackend']
+
 
 # Application definition
 
@@ -235,7 +238,8 @@ GROQ_API_KEY = config('GROQ_API_KEY', default='')
 BREVO_API_KEY = config('BREVO_API_KEY', default='')
 BREVO_SENDER_EMAIL = config('BREVO_SENDER_EMAIL', default='')
 BREVO_SENDER_NAME = config('BREVO_SENDER_NAME', default='FocusForge')
-SITE_URL = config('SITE_URL', default='http://127.0.0.1:8000').rstrip('/')
+# Used for links in emails. On Render it falls back to the service's public URL when SITE_URL is not set.
+SITE_URL = config('SITE_URL', default=f'https://{render_hostname}' if render_hostname else 'http://127.0.0.1:8000').rstrip('/')
 
 
 # Render terminates TLS at its proxy. Keep these production-only so local HTTP works.
