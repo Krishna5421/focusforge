@@ -136,8 +136,13 @@
   ring.style.strokeDasharray = circumference;
 
   const focusedSeconds = () => Math.max(0, totalSeconds - seconds);
+  // Preview only: keep the clock within 5–120 min while the input shows its own validation message.
+  const previewMinutes = () => {
+    const value = Math.round(Number(durationInput.value));
+    return Number.isFinite(value) && value > 0 ? Math.min(120, Math.max(5, value)) : 25;
+  };
   const setIdleTime = () => {
-    totalSeconds = mode === 'focus' ? Number(durationInput.value || 25) * 60 : modes[mode].seconds;
+    totalSeconds = mode === 'focus' ? previewMinutes() * 60 : modes[mode].seconds;
     seconds = totalSeconds;
   };
 
