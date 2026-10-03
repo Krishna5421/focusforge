@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from django.db.models import Q
 from . import verification
+from .streaks import refresh_activity_streak
 from .serializers import UserSerializer, RegisterSerializer, ProfileSerializer
 
 
@@ -80,7 +81,7 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        return self.request.user.profile
+        return refresh_activity_streak(self.request.user)
 
 
 class MeAPIView(APIView):

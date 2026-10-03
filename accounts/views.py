@@ -18,6 +18,7 @@ from .forms import (RegisterForm, StyledLoginForm, ProfileForm, UserUpdateForm,
                     PasswordResetRequestForm, PasswordResetOTPForm, PasswordResetSetForm)
 from .models import PasswordResetOTP
 from . import verification
+from .streaks import refresh_activity_streak
 
 logger = logging.getLogger(__name__)
 
@@ -283,7 +284,7 @@ def password_reset_new_password(request):
 @login_required
 def profile_view(request):
     return render(request, 'accounts/profile.html', {
-        'profile': request.user.profile,
+        'profile': refresh_activity_streak(request.user),
         'weekly_consistency_score': weekly_consistency_score(request.user),
     })
 

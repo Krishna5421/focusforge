@@ -4,6 +4,8 @@ from rest_framework import permissions
 from django.utils import timezone
 from datetime import timedelta
 
+from accounts.streaks import refresh_activity_streak
+
 from tasks.models import Task
 from habits.models import Habit
 from study.models import Subject
@@ -138,7 +140,7 @@ class DashboardSummaryAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        profile = user.profile
+        profile = refresh_activity_streak(user)
 
         return Response({
             'total_xp': profile.total_xp,
@@ -174,7 +176,7 @@ class DashboardStatsAPIView(APIView):
             1 for habit in active_habits
             if habit.logs.filter(date=today, completed=True).exists()
         )
-        profile = user.profile
+        profile = refresh_activity_streak(user)
 
         task_pct = 0
         if todays_tasks_count > 0:

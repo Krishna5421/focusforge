@@ -72,6 +72,9 @@
           dot?.remove();
         }
       }
+      // Activity streak card on the dashboard updates as soon as something is completed.
+      document.querySelectorAll('[data-streak-current]').forEach(el => { el.textContent = `${data.current_streak}d`; });
+      document.querySelectorAll('[data-streak-best]').forEach(el => { el.textContent = `${data.longest_streak}d`; });
       if (showXp && knownXp !== null) xpPopup(data.total_xp - knownXp);
       knownXp = data.total_xp;
     } catch (error) {

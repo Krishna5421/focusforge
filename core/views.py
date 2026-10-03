@@ -13,6 +13,7 @@ from goals.models import Goal
 from pomodoro.models import PomodoroSession
 from achievements.models import UserAchievement
 from study.models import ActiveStudySession, StudySession
+from accounts.streaks import refresh_activity_streak
 
 
 def percent_change(current, previous):
@@ -129,7 +130,7 @@ def dashboard(request):
     focus_delta = percent_change(week_focus_minutes, prev_week_focus_minutes)
     habits_delta = percent_change(week_habits_completed, prev_week_habits_completed)
 
-    profile = user.profile
+    profile = refresh_activity_streak(user)
     recent_achievements = UserAchievement.objects.filter(user=user)[:4]
     recent_study_sessions = StudySession.objects.filter(user=user).select_related('subject')[:4]
 

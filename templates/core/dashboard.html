@@ -67,8 +67,8 @@
       <span class="stat-label">Current Streak</span>
       <span class="stat-icon"><i class="bi bi-fire"></i></span>
     </div>
-    <div class="stat-value">{{ profile.current_streak }}d</div>
-    <div class="stat-sub">Personal best: {{ profile.longest_streak }}d</div>
+    <div class="stat-value" data-streak-current>{{ profile.current_streak }}d</div>
+    <div class="stat-sub">Personal best: <span data-streak-best>{{ profile.longest_streak }}d</span></div>
   </div>
 </div>
 

@@ -367,3 +367,68 @@ class EmailVerificationTests(TestCase):
                                     content_type='application/json')
         self.assertEqual(response.status_code, 400)
         self.assertIn('email', response.json())
+
+
+class ActivityStreakTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('streaker', password='pass12345')
+        self.client.login(username='streaker', password='pass12345')
+        self.today = timezone.localdate()
+
+    def days_ago(self, n):
+        return self.today - timedelta(days=n)
+
+    def test_calculation_matches_the_weekly_example(self):
+        from datetime import date
+        from .streaks import calculate_streaks
+        mon, tue, wed, thu, fri = (date(2026, 9, 28) + timedelta(days=i) for i in range(5))
+        self.assertEqual(calculate_streaks({mon, tue}, wed), (2, 2))          # Wed, nothing yet: still 2
+        self.assertEqual(calculate_streaks({mon, tue, wed}, wed), (3, 3))     # study session on Wed
+        self.assertEqual(calculate_streaks({mon, tue, wed}, fri), (0, 3))     # Thu missed
+        self.assertEqual(calculate_streaks({mon, tue, wed, fri}, fri), (1, 3))
+        self.assertEqual(calculate_streaks(set(), fri), (0, 0))
+
+    def test_every_activity_type_counts(self):
+        from habits.models import Habit, HabitLog
+        from pomodoro.models import PomodoroSession
+        from study.models import StudySession, Subject
+        from .streaks import refresh_activity_streak
+        now = timezone.now()
+        Task.objects.create(user=self.user, title='Done', status='COMPLETED', completed_at=now)
+        habit = Habit.objects.create(user=self.user, name='Read')
+        HabitLog.objects.create(habit=habit, date=self.days_ago(1), completed=True)
+        PomodoroSession.objects.create(user=self.user, status='COMPLETED', duration_minutes=25,
+                                       actual_focus_seconds=1500, completed_at=now - timedelta(days=2))
+        StudySession.objects.create(user=self.user, subject=Subject.objects.create(user=self.user, name='OS'),
+                                    date=self.days_ago(3), duration_minutes=30)
+        # Day 4 has only a pending task and an incomplete habit log, which must not count.
+        Task.objects.create(user=self.user, title='Pending', due_date=now - timedelta(days=4))
+        HabitLog.objects.create(habit=habit, date=self.days_ago(4), completed=False)
+
+        profile = refresh_activity_streak(self.user)
+        self.assertEqual((profile.current_streak, profile.longest_streak), (4, 4))
+
+    def test_unchecking_the_only_activity_lowers_the_streak(self):
+        from .streaks import refresh_activity_streak
+        Task.objects.create(user=self.user, title='Yesterday', status='COMPLETED', completed_at=timezone.now() - timedelta(days=1))
+        task = Task.objects.create(user=self.user, title='Today', status='COMPLETED', completed_at=timezone.now())
+        self.assertEqual(refresh_activity_streak(self.user).current_streak, 2)
+
+        self.client.post(reverse('tasks:ajax_toggle_status', args=[task.pk]))
+        # Today undone: the streak falls back to the run that ended yesterday.
+        self.assertEqual(refresh_activity_streak(self.user).current_streak, 1)
+
+    def test_dashboard_profile_and_api_show_the_streak(self):
+        Task.objects.create(user=self.user, title='Done', status='COMPLETED', completed_at=timezone.now())
+        self.assertContains(self.client.get(reverse('core:dashboard')), 'data-streak-current>1d')
+        self.assertEqual(self.client.get(reverse('accounts:profile')).context['profile'].current_streak, 1)
+        self.assertEqual(self.client.get('/api/dashboard-summary/').json()['current_streak'], 1)
+
+    def test_profile_api_cannot_change_xp_or_streaks(self):
+        response = self.client.patch('/api/auth/profile/', {'total_xp': 99999, 'current_streak': 365, 'bio': 'Hi'},
+                                     content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.total_xp, 0)
+        self.assertEqual(self.user.profile.current_streak, 0)
+        self.assertEqual(self.user.profile.bio, 'Hi')
