@@ -4,7 +4,9 @@ from . import views
 app_name = 'notifications'
 
 urlpatterns = [
-    path('achievement-toasts/', views.pending_achievement_toasts, name='achievement_toasts'),
+    path('toasts/', views.pending_toasts, name='pending_toasts'),
+    # Kept so pages still running the previous script keep working.
+    path('achievement-toasts/', views.pending_toasts, name='achievement_toasts'),
     path('', views.notification_list, name='notification_list'),
     path('<int:pk>/read/', views.notification_mark_read, name='notification_mark_read'),
     path('mark-all-read/', views.notification_mark_all_read, name='notification_mark_all_read'),

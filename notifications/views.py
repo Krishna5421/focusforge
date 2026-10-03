@@ -5,14 +5,23 @@ from django.db import transaction
 from .models import Notification
 
 
+TOAST_TYPES = {
+    'ACHIEVEMENT_UNLOCKED': 'achievement',
+    'TASK_DUE_SOON': 'warning',
+    'TASK_OVERDUE': 'error',
+}
+
+
 @login_required
-def pending_achievement_toasts(request):
+def pending_toasts(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Invalid method.'}, status=405)
+    from tasks.reminders import safe_check_task_due_notifications
+    safe_check_task_due_notifications(request.user)
     with transaction.atomic():
         pending = list(Notification.objects.select_for_update().filter(
             user=request.user,
-            type='ACHIEVEMENT_UNLOCKED',
+            type__in=TOAST_TYPES,
             toast_pending=True,
         ).order_by('created_at')[:10])
         if pending:
@@ -22,7 +31,7 @@ def pending_achievement_toasts(request):
                 toast_pending=True,
             ).update(toast_pending=False)
     return JsonResponse({'notifications': [
-        {'id': item.pk, 'title': item.title, 'message': item.message}
+        {'id': item.pk, 'title': item.title, 'message': item.message, 'toast_type': TOAST_TYPES[item.type]}
         for item in pending
     ]})
 
@@ -31,6 +40,7 @@ def pending_achievement_toasts(request):
 def notification_list(request):
     notification_styles = {
         'ACHIEVEMENT_UNLOCKED': ('bi-award', 'purple'), 'TASK_REMINDER': ('bi-check2', 'blue'),
+        'TASK_DUE_SOON': ('bi-alarm', 'amber'), 'TASK_OVERDUE': ('bi-exclamation-circle', 'red'),
         'TASK_COMPLETED': ('bi-check2-circle', 'blue'), 'GOAL_DEADLINE': ('bi-bullseye', 'purple'),
         'GOAL_COMPLETED': ('bi-trophy', 'purple'), 'MILESTONE_COMPLETED': ('bi-flag', 'purple'),
         'FOCUS_COMPLETED': ('bi-clock-history', 'amber'), 'POMODORO_ABANDONED': ('bi-stopwatch', 'amber'),
