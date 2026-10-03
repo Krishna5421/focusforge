@@ -10,6 +10,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             'bio', 'profile_picture', 'productivity_score', 'total_xp',
             'current_streak', 'longest_streak', 'email_verified'
         ]
+        # Earned or system-managed values: users can read them but never set them through the API.
+        read_only_fields = ['productivity_score', 'total_xp', 'current_streak', 'longest_streak', 'email_verified']
 
 
 class UserSerializer(serializers.ModelSerializer):
