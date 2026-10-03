@@ -1,0 +1,20 @@
+{% extends 'accounts/password_base.html' %}
+{% load static %}
+{% block title %}Verify your email · FocusForge{% endblock %}
+{% block reset_icon %}bi-envelope-check{% endblock %}
+{% block content %}
+<h1>Verify your email</h1>
+<p class="reset-subtitle">We sent a 6-digit code to <strong class="verify-email-address">{{ masked_email }}</strong>. It expires in 10 minutes.</p>
+<form method="post" class="reset-form">{% csrf_token %}
+  {% include 'accounts/partials/otp_field.html' %}
+  <button type="submit" class="btn-gradient">Verify &amp; continue</button>
+</form>
+<form method="post" action="{% url 'accounts:verify_email_resend' %}" class="verify-resend">{% csrf_token %}
+  <span>Didn't get it? Check spam, or</span>
+  <button type="submit" class="link-button" data-countdown="{{ resend_wait }}" data-label="Resend code">Resend code</button>
+</form>
+<form method="post" action="{% url 'accounts:verify_email_restart' %}">{% csrf_token %}
+  <button type="submit" class="reset-back link-button"><i class="bi bi-arrow-left"></i> Wrong email? Sign up again</button>
+</form>
+<script src="{% static 'js/otp_boxes.js' %}"></script>
+{% endblock %}

@@ -624,3 +624,47 @@ body {
     .auth-page { min-height: 100dvh; overflow-x: clip; overflow-y: auto; }
     .reset-page { min-height: 100dvh; overflow-x: clip; overflow-y: auto; }
 }
+
+/* Verification code digit boxes */
+.otp-fallback[hidden], .otp-boxes[hidden] { display: none; }
+.otp-boxes {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+}
+.otp-box {
+    width: 100%;
+    height: 58px;
+    background: #0f1b2e;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    color: #f1f5f9;
+    font-family: inherit;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    caret-color: #2dd4bf;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.otp-box.filled { border-color: rgba(45, 212, 191, 0.45); }
+.otp-box:focus {
+    border-color: #2dd4bf;
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
+    transform: translateY(-1px);
+}
+.otp-boxes.has-error .otp-box { border-color: #f87171; }
+.otp-boxes.has-error .otp-box:focus { box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15); }
+@media (max-width: 400px) {
+    .otp-boxes { gap: 6px; }
+    .otp-box { height: 50px; font-size: 1.25rem; border-radius: 10px; }
+}
+
+/* Email verification page */
+.verify-email-address { color: #e2e8f0; font-weight: 600; word-break: break-all; }
+.link-button { background: none; border: 0; cursor: pointer; font-family: inherit; font-size: inherit; padding: 0; }
+.reset-back.link-button { font-size: 0.84rem; }
+.verify-resend { align-items: center; color: #94a3b8; display: flex; flex-wrap: wrap; font-size: 0.84rem; gap: 6px; justify-content: center; margin-top: 18px; }
+.verify-resend .link-button { color: #2dd4bf; font-weight: 600; }
+.verify-resend .link-button:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+.verify-resend .link-button:disabled { color: #64748b; cursor: default; font-variant-numeric: tabular-nums; }

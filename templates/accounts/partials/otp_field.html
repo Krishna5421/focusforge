@@ -1,0 +1,11 @@
+<label for="id_otp" id="otpLabel">Verification code</label>
+{# Plain field without JavaScript; static/js/otp_boxes.js swaps in the digit boxes. #}
+<div class="input-wrap otp-fallback {% if form.otp.errors %}has-error{% endif %}"><i class="bi bi-shield-check"></i>{{ form.otp }}</div>
+<div class="otp-boxes {% if form.otp.errors %}has-error{% endif %}" role="group" aria-labelledby="otpLabel" hidden>
+  {% for digit in '123456' %}
+    <input class="otp-box" type="text" inputmode="numeric" pattern="[0-9]*"
+           {% if forloop.first %}autocomplete="one-time-code"{% else %}autocomplete="off"{% endif %}
+           aria-label="Digit {{ forloop.counter }} of 6">
+  {% endfor %}
+</div>
+{% if form.otp.errors %}<p class="form-error">{{ form.otp.errors.0 }}</p>{% endif %}
