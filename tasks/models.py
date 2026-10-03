@@ -54,6 +54,9 @@ class Task(models.Model):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
 
     due_date = models.DateTimeField(null=True, blank=True)
+    # The due_date each reminder was last sent for, so a rescheduled task is reminded again.
+    due_soon_notified_for = models.DateTimeField(null=True, blank=True, editable=False)
+    overdue_notified_for = models.DateTimeField(null=True, blank=True, editable=False)
 
     parent_task = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subtasks')
 

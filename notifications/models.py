@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 class Notification(models.Model):
     TYPE_CHOICES = [
         ('TASK_REMINDER', 'Task Reminder'),
+        ('TASK_DUE_SOON', 'Task Due Soon'),
+        ('TASK_OVERDUE', 'Task Overdue'),
         ('HABIT_REMINDER', 'Habit Reminder'),
         ('GOAL_DEADLINE', 'Goal Deadline'),
         ('POMODORO_ABANDONED', 'Pomodoro Abandoned'),
