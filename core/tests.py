@@ -94,3 +94,33 @@ class GlobalSearchTests(TestCase):
         response = self.client.get(reverse('core:global_search'), {'q': 'nothing-matches-this'}, follow=True)
 
         self.assertContains(response, 'No tasks, habits, or goals were found')
+
+
+class SidebarBadgeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='badges', password='pass12345')
+        self.client.login(username='badges', password='pass12345')
+
+    def test_badges_count_habits_goals_and_deadlines(self):
+        from datetime import timedelta
+        today = timezone.localdate()
+        Habit.objects.create(user=self.user, name='Read')
+        done = Habit.objects.create(user=self.user, name='Walk')
+        HabitLog.objects.create(habit=done, date=today, completed=True)
+        Habit.objects.create(user=self.user, name='Not today', frequency='WEEKLY',
+                             target_days=[today.isoweekday() % 7 + 1])
+        Goal.objects.create(user=self.user, title='Soon', deadline=today + timedelta(days=3))
+        Goal.objects.create(user=self.user, title='Far', deadline=today + timedelta(days=60))
+        Task.objects.create(user=self.user, title='Due', due_date=timezone.now() + timedelta(days=2))
+        Task.objects.create(user=self.user, title='No date')
+
+        context = self.client.get(reverse('core:dashboard')).context
+        self.assertEqual(context['sidebar_habits_left'], 1)   # Read (Walk done, the weekly one is not due)
+        self.assertEqual(context['sidebar_active_goals'], 2)
+        self.assertEqual(context['sidebar_deadlines'], 2)     # task due in 2 days + goal in 3 days
+        self.assertEqual(context['sidebar_open_tasks'], 2)
+
+    def test_no_badges_when_nothing_to_show(self):
+        response = self.client.get(reverse('core:dashboard'))
+        self.assertNotContains(response, 'title="Habits left to do today"')
+        self.assertNotContains(response, 'title="Active goals"')
