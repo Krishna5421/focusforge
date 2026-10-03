@@ -20,10 +20,10 @@ class ProfileTests(TestCase):
     def test_profile_edit_updates_user_and_bio(self):
         response = self.client.post(reverse('accounts:settings'), {
             'first_name': 'Krishna', 'last_name': 'Yadav', 'username': 'krishna',
-            'email': 'krishna@example.com', 'bio': 'Building better routines.',
+            'email': 'old@example.com', 'bio': 'Building better routines.',
         })
 
-        self.assertRedirects(response, reverse('accounts:settings'))
+        self.assertRedirects(response, reverse('accounts:profile'))
         self.user.refresh_from_db()
         self.assertEqual(self.user.username, 'krishna')
         self.assertEqual(self.user.first_name, 'Krishna')
@@ -432,3 +432,116 @@ class ActivityStreakTests(TestCase):
         self.assertEqual(self.user.profile.total_xp, 0)
         self.assertEqual(self.user.profile.current_streak, 0)
         self.assertEqual(self.user.profile.bio, 'Hi')
+
+
+class EditProfileTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='editor', email='old@example.com', password='Old-pass-123',
+                                             first_name='Ed')
+        self.client.login(username='editor', password='Old-pass-123')
+
+    def form_data(self, **changes):
+        data = {'first_name': 'Ed', 'last_name': '', 'username': 'editor', 'email': 'old@example.com', 'bio': ''}
+        data.update(changes)
+        return data
+
+    def change_email(self, new_email='new@example.com', sent=True):
+        self.codes = []
+
+        def fake_deliver(user, address, code):
+            self.codes.append(code)
+            return sent
+        with patch('accounts.email_change.deliver_change_code', side_effect=fake_deliver):
+            return self.client.post(reverse('accounts:settings'), self.form_data(email=new_email, first_name='Eddie'))
+
+    def test_email_change_waits_for_code_but_other_fields_save(self):
+        response = self.change_email()
+
+        self.assertRedirects(response, reverse('accounts:confirm_email_change'))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'old@example.com')
+        self.assertEqual(self.user.first_name, 'Eddie')
+        self.assertContains(self.client.get(reverse('accounts:settings')), 'Email change pending')
+
+    def test_correct_code_switches_email_and_notifies_old_address(self):
+        self.change_email()
+        with patch('notifications.emailing.send_focusforge_email_async') as notify:
+            response = self.client.post(reverse('accounts:confirm_email_change'), {'otp': self.codes[0]})
+
+        self.assertRedirects(response, reverse('accounts:profile'), fetch_redirect_response=False)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'new@example.com')
+        self.assertEqual(notify.call_args.args[0].email, 'old@example.com')
+
+    def test_wrong_code_keeps_old_email(self):
+        self.change_email()
+        wrong = '000000' if self.codes[0] != '000000' else '111111'
+        response = self.client.post(reverse('accounts:confirm_email_change'), {'otp': wrong})
+        self.assertContains(response, '4 attempts left')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'old@example.com')
+
+    def test_address_taken_while_pending_is_rejected(self):
+        self.change_email()
+        User.objects.create_user('other', email='NEW@example.com', password='x')
+        response = self.client.post(reverse('accounts:confirm_email_change'), {'otp': self.codes[0]}, follow=True)
+        self.assertContains(response, 'now used by another account')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'old@example.com')
+
+    def test_cancel_and_send_failure(self):
+        response = self.change_email(sent=False)
+        page = self.client.get(response.url)
+        self.assertContains(page, 'data-countdown="0"')
+        self.client.post(reverse('accounts:cancel_email_change'))
+        self.assertRedirects(self.client.get(reverse('accounts:confirm_email_change')), reverse('accounts:settings'))
+
+    def test_email_cannot_be_blank(self):
+        response = self.client.post(reverse('accounts:settings'), self.form_data(email=''))
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'old@example.com')
+
+    def test_change_password_keeps_session(self):
+        response = self.client.post(reverse('accounts:change_password'), {
+            'old_password': 'Old-pass-123', 'new_password1': 'Brand-new-pass-456', 'new_password2': 'Brand-new-pass-456',
+        })
+        self.assertRedirects(response, reverse('accounts:settings'))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('Brand-new-pass-456'))
+        self.assertEqual(self.client.get(reverse('accounts:profile')).status_code, 200)
+
+    def test_change_password_wrong_current_password(self):
+        response = self.client.post(reverse('accounts:change_password'), {
+            'old_password': 'nope', 'new_password1': 'Brand-new-pass-456', 'new_password2': 'Brand-new-pass-456',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Your old password was entered incorrectly')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('Old-pass-123'))
+
+    def test_remove_photo(self):
+        from accounts.models import Profile
+        Profile.objects.filter(user=self.user).update(profile_picture='profiles/me.png')
+        with patch('django.db.models.fields.files.FieldFile.delete') as delete_file:
+            response = self.client.post(reverse('accounts:remove_profile_photo'))
+        self.assertRedirects(response, reverse('accounts:settings'), fetch_redirect_response=False)
+        delete_file.assert_called_once()
+        self.user.profile.refresh_from_db()
+        self.assertFalse(self.user.profile.profile_picture)
+
+    def test_large_or_wrong_type_photo_is_rejected(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        big = SimpleUploadedFile('big.png', b'x' * (2 * 1024 * 1024 + 1), content_type='image/png')
+        response = self.client.post(reverse('accounts:settings'), {**self.form_data(), 'profile_picture': big})
+        self.assertContains(response, 'larger than 2 MB')
+        gif = SimpleUploadedFile('a.gif', b'GIF89a', content_type='image/gif')
+        response = self.client.post(reverse('accounts:settings'), {**self.form_data(), 'profile_picture': gif})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.user.profile.profile_picture)
+
+    def test_bio_limit(self):
+        response = self.client.post(reverse('accounts:settings'), self.form_data(bio='x' * 201))
+        self.assertEqual(response.status_code, 200)
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.bio, '')
