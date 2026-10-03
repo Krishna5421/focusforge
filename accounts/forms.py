@@ -50,6 +50,11 @@ class StyledLoginForm(AuthenticationForm):
         self.fields['username'].widget.attrs['maxlength'] = 254
 
 
+BIO_MAX_LENGTH = 200
+PROFILE_PICTURE_MAX_BYTES = 2 * 1024 * 1024
+PROFILE_PICTURE_TYPES = ('image/jpeg', 'image/png', 'image/webp')
+
+
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
@@ -58,15 +63,39 @@ class ProfileForm(forms.ModelForm):
             'bio': forms.Textarea(attrs={
                 'rows': 4,
                 'placeholder': 'Tell us a little about yourself.',
+                'maxlength': BIO_MAX_LENGTH,
             }),
-            'profile_picture': forms.ClearableFileInput(attrs={'accept': 'image/jpeg,image/png,image/webp'}),
+            'profile_picture': forms.ClearableFileInput(attrs={'accept': ','.join(PROFILE_PICTURE_TYPES)}),
         }
+
+    def clean_bio(self):
+        bio = self.cleaned_data.get('bio', '').strip()
+        if len(bio) > BIO_MAX_LENGTH:
+            raise forms.ValidationError(f'Keep your bio to {BIO_MAX_LENGTH} characters or fewer.')
+        return bio
+
+    def clean_profile_picture(self):
+        picture = self.cleaned_data.get('profile_picture')
+        # Only newly uploaded files have a size/content type to check; an existing photo is left alone.
+        content_type = getattr(picture, 'content_type', None)
+        if content_type is None:
+            return picture
+        if content_type not in PROFILE_PICTURE_TYPES:
+            raise forms.ValidationError('Choose a JPG, PNG, or WebP image.')
+        if picture.size > PROFILE_PICTURE_MAX_BYTES:
+            raise forms.ValidationError('This image is larger than 2 MB. Choose a smaller one.')
+        return picture
 
 
 class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'username', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The email is needed for sign-in by email, password resets, and notifications.
+        self.fields['email'].required = True
 
     def clean_username(self):
         username = self.cleaned_data['username'].strip()
