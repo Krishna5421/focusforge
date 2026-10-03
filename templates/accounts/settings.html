@@ -24,6 +24,17 @@
   <form method="post" enctype="multipart/form-data" class="profile-edit-form">
     {% csrf_token %}
 
+    {% if pending_email_change %}
+      <div class="settings-notice">
+        <i class="bi bi-envelope-exclamation" aria-hidden="true"></i>
+        <div>
+          <strong>Email change pending</strong>
+          <span>Confirm the code sent to {{ pending_email_change.new_email }} to switch. Until then, {{ request.user.email }} stays active.</span>
+        </div>
+        <a class="btn btn-secondary btn-sm" href="{% url 'accounts:confirm_email_change' %}">Enter code</a>
+      </div>
+    {% endif %}
+
     <div class="profile-photo-row">
       <div class="profile-avatar edit-photo profile-photo-preview" id="profilePicturePreview">
         {% if request.user.profile.profile_picture %}
@@ -48,10 +59,16 @@
                for="{{ profile_form.profile_picture.id_for_label }}">
           <i class="bi bi-camera"></i> Change profile picture
         </label>
+        {% if request.user.profile.profile_picture %}
+          {# Belongs to #removePhotoForm (below), so pressing Enter in this form never triggers it. #}
+          <button class="btn btn-danger-ghost btn-sm remove-photo-button" type="submit" form="removePhotoForm">
+            <i class="bi bi-trash"></i> Remove photo
+          </button>
+        {% endif %}
         <div class="hidden-file-input">
           {{ profile_form.profile_picture }}
         </div>
-        <p class="form-message">JPG, PNG, or WebP image.</p>
+        <p class="form-message">JPG, PNG, or WebP image, up to 2 MB.</p>
         {% for error in profile_form.profile_picture.errors %}
           <p class="field-error">{{ error }}</p>
         {% endfor %}
@@ -79,6 +96,7 @@
       <div class="form-group">
         <label class="form-label" for="{{ user_form.username.id_for_label }}">Username</label>
         {{ user_form.username }}
+        <p class="form-message">You can sign in with your username or email.</p>
         {% for error in user_form.username.errors %}
           <p class="field-error">{{ error }}</p>
         {% endfor %}
@@ -86,6 +104,7 @@
       <div class="form-group">
         <label class="form-label" for="{{ user_form.email.id_for_label }}">Email</label>
         {{ user_form.email }}
+        <p class="form-message">A new email takes effect after you confirm a code sent to it.</p>
         {% for error in user_form.email.errors %}
           <p class="field-error">{{ error }}</p>
         {% endfor %}
@@ -95,6 +114,7 @@
     <div class="form-group">
       <label class="form-label" for="{{ profile_form.bio.id_for_label }}">Bio</label>
       {{ profile_form.bio }}
+      <p class="form-message bio-counter"><span id="bioCount">{{ profile_form.bio.value|default:''|length }}</span> / {{ bio_max_length }}</p>
       {% for error in profile_form.bio.errors %}
         <p class="field-error">{{ error }}</p>
       {% endfor %}
@@ -105,6 +125,38 @@
       <button class="btn btn-primary" type="submit">Save changes</button>
     </div>
   </form>
+  <form id="removePhotoForm" method="post" action="{% url 'accounts:remove_profile_photo' %}" hidden>{% csrf_token %}</form>
+  </section>
+
+  <section class="card profile-edit-card settings-password-card" id="password">
+    <div class="card-head">
+      <h2 class="card-title">Password</h2>
+    </div>
+    <form method="post" action="{% url 'accounts:change_password' %}" class="profile-edit-form">
+      {% csrf_token %}
+      {% for error in password_form.non_field_errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      <div class="form-group">
+        <label class="form-label" for="{{ password_form.old_password.id_for_label }}">Current password</label>
+        {{ password_form.old_password }}
+        {% for error in password_form.old_password.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="{{ password_form.new_password1.id_for_label }}">New password</label>
+          {{ password_form.new_password1 }}
+          {% for error in password_form.new_password1.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="{{ password_form.new_password2.id_for_label }}">Confirm new password</label>
+          {{ password_form.new_password2 }}
+          {% for error in password_form.new_password2.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <p class="form-message">At least 8 characters, not too common, and not entirely numbers. You'll stay signed in on this device.</p>
+      <div class="profile-edit-actions">
+        <button class="btn btn-primary" type="submit">Change password</button>
+      </div>
+    </form>
   </section>
 </div>
 {% endblock %}
@@ -129,9 +181,14 @@
     const file = input.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       input.value = '';
-      window.FocusForge?.toast('Please choose an image file.', 'error');
+      window.FocusForge?.toast('Please choose a JPG, PNG, or WebP image.', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      input.value = '';
+      window.FocusForge?.toast('This image is larger than 2 MB. Choose a smaller one.', 'error');
       return;
     }
 
@@ -141,6 +198,10 @@
     image.hidden = false;
     fallback.hidden = true;
   });
+
+  const bio = document.getElementById('{{ profile_form.bio.id_for_label }}');
+  const bioCount = document.getElementById('bioCount');
+  bio?.addEventListener('input', () => { bioCount.textContent = bio.value.length; });
 
   window.addEventListener('beforeunload', () => {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
