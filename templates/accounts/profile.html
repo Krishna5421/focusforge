@@ -35,9 +35,19 @@
         <div class="profile-avatar profile-avatar-fallback">{{ request.user.username|first|upper }}</div>
       {% endif %}
       <h2>{{ request.user.get_full_name|default:request.user.username }}</h2>
+      {% if request.user.get_full_name %}<p class="profile-username">@{{ request.user.username }}</p>{% endif %}
       <p class="profile-email">{{ request.user.email|default:'No email added' }}</p>
-      <p class="profile-bio">{{ profile.bio|default:'Add a short bio to personalize your profile.' }}</p>
+      {% if profile.bio %}
+        <p class="profile-bio">{{ profile.bio }}</p>
+      {% else %}
+        <a class="profile-bio profile-bio-empty" href="{% url 'accounts:settings' %}">Add a short bio to personalize your profile.</a>
+      {% endif %}
       <div class="profile-joined"><i class="bi bi-calendar3"></i> Member since {{ profile.created_at|date:'M Y' }}</div>
+      <div class="profile-badges">
+        {% if profile.email_verified %}<span class="profile-badge is-verified"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>Verified</span>{% endif %}
+        <span class="profile-badge is-level"><i class="bi bi-star-fill" aria-hidden="true"></i>Level {{ profile.get_level }}</span>
+        {% if profile.current_streak %}<span class="profile-badge is-streak"><i class="bi bi-fire" aria-hidden="true"></i>{{ profile.current_streak }}-day streak</span>{% endif %}
+      </div>
     </div>
   </section>
 
@@ -49,11 +59,25 @@
       <div><span>Current streak</span><strong>{{ profile.current_streak }}d</strong></div>
       <div><span>Best streak</span><strong>{{ profile.longest_streak }}d</strong></div>
     </div>
+    <div class="profile-score profile-xp">
+      <div><span>Level {{ next_level }} progress</span><strong>{{ xp_into_level }} / 100 XP</strong></div>
+      <div class="score-track"><div style="width:{{ xp_into_level }}%"></div></div>
+      <small>{{ xp_to_next_level }} XP to Level {{ next_level }}</small>
+    </div>
     <div class="profile-score">
       <div><span>Weekly consistency</span><strong>{{ weekly_consistency_score }}%</strong></div>
       <div class="score-track"><div style="width:{{ weekly_consistency_score }}%"></div></div>
     </div>
   </section>
+</div>
+
+<div class="profile-quick-stats">
+  {% for icon, label, value in quick_stats %}
+    <div class="card profile-quick-stat">
+      <i class="bi {{ icon }}" aria-hidden="true"></i>
+      <div><strong>{{ value }}</strong><span>{{ label }}</span></div>
+    </div>
+  {% endfor %}
 </div>
 
 {% endblock %}
