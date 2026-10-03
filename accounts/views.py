@@ -1,4 +1,5 @@
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.decorators import login_required
@@ -14,10 +15,10 @@ import secrets
 from tasks.models import Task
 from habits.models import Habit
 from goals.models import Goal, Milestone
-from .forms import (RegisterForm, StyledLoginForm, ProfileForm, UserUpdateForm,
+from .forms import (BIO_MAX_LENGTH, RegisterForm, StyledLoginForm, ProfileForm, UserUpdateForm,
                     PasswordResetRequestForm, PasswordResetOTPForm, PasswordResetSetForm)
-from .models import PasswordResetOTP
-from . import verification
+from .models import PasswordResetOTP, PendingEmailChange
+from . import email_change, verification
 from .streaks import refresh_activity_streak
 
 logger = logging.getLogger(__name__)
@@ -283,9 +284,51 @@ def password_reset_new_password(request):
 
 @login_required
 def profile_view(request):
+    from django.db.models import Sum
+    from achievements.models import Achievement, UserAchievement
+    from pomodoro.models import PomodoroSession
+    from study.models import StudySession
+
+    user = request.user
+    profile = refresh_activity_streak(user)
+
+    def hours_and_minutes(minutes):
+        hours, rest = divmod(int(minutes), 60)
+        return f'{hours}h {rest}m' if hours and rest else f'{hours}h' if hours else f'{rest}m'
+
+    focus_minutes = sum(
+        (session.actual_focus_seconds or session.duration_minutes * 60) / 60
+        for session in PomodoroSession.objects.filter(user=user, status='COMPLETED')
+        .only('actual_focus_seconds', 'duration_minutes')
+    )
+    study_minutes = StudySession.objects.filter(user=user).aggregate(total=Sum('duration_minutes'))['total'] or 0
+    xp_into_level = profile.total_xp % 100
+
     return render(request, 'accounts/profile.html', {
-        'profile': refresh_activity_streak(request.user),
-        'weekly_consistency_score': weekly_consistency_score(request.user),
+        'profile': profile,
+        'weekly_consistency_score': weekly_consistency_score(user),
+        'xp_into_level': xp_into_level,
+        'xp_to_next_level': 100 - xp_into_level,
+        'next_level': profile.get_level() + 1,
+        'quick_stats': [
+            ('bi-check2-circle', 'Tasks done', Task.objects.filter(user=user, status='COMPLETED').count()),
+            ('bi-stopwatch', 'Focus time', hours_and_minutes(focus_minutes)),
+            ('bi-book', 'Study time', hours_and_minutes(study_minutes)),
+            ('bi-award', 'Achievements',
+             f'{UserAchievement.objects.filter(user=user).count()} / {Achievement.objects.count()}'),
+        ],
+    })
+
+
+def render_settings(request, user_form, profile_form, password_form):
+    # Django autofocuses the current-password field, which would scroll the page down to it on every visit.
+    password_form.fields['old_password'].widget.attrs.pop('autofocus', None)
+    return render(request, 'accounts/settings.html', {
+        'user_form': user_form,
+        'profile_form': profile_form,
+        'password_form': password_form,
+        'pending_email_change': email_change.pending_change(request.user),
+        'bio_max_length': BIO_MAX_LENGTH,
     })
 
 
@@ -293,20 +336,116 @@ def profile_view(request):
 def settings_view(request):
     profile = request.user.profile
     if request.method == 'POST':
+        old_email = request.user.email or ''
         user_form = UserUpdateForm(request.POST, instance=request.user)
         profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
         if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
+            new_email = user_form.cleaned_data['email']
+            email_changed = new_email.lower() != old_email.lower()
+            user = user_form.save(commit=False)
+            if email_changed:
+                user.email = old_email  # The new address is applied only after its code is confirmed.
+            user.save()
             profile_form.save()
-            messages.success(request, 'Settings updated successfully.')
-            return redirect('accounts:settings')
+            if email_changed:
+                if email_change.request_email_change(user, new_email):
+                    messages.success(request, f'Profile saved. Enter the code we sent to {verification.mask_email(new_email)} to switch your email.')
+                else:
+                    messages.error(request, "Profile saved, but we couldn't send the code to your new email. Use Resend code in a moment.")
+                return redirect('accounts:confirm_email_change')
+            messages.success(request, 'Profile updated successfully.')
+            return redirect('accounts:profile')
+        # Show the address that is actually saved, not the rejected one, elsewhere on the page.
+        request.user.email = old_email
     else:
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileForm(instance=profile)
-    return render(request, 'accounts/settings.html', {
-        'user_form': user_form,
-        'profile_form': profile_form,
+    return render_settings(request, user_form, profile_form, PasswordChangeForm(request.user))
+
+
+@login_required
+def change_password(request):
+    if request.method != 'POST':
+        return redirect('accounts:settings')
+    password_form = PasswordChangeForm(request.user, request.POST)
+    if password_form.is_valid():
+        user = password_form.save()
+        update_session_auth_hash(request, user)  # Stay signed in on this device.
+        messages.success(request, 'Password changed successfully.')
+        return redirect('accounts:settings')
+    messages.error(request, 'Your password was not changed. Please fix the errors below.')
+    return render_settings(request, UserUpdateForm(instance=request.user),
+                           ProfileForm(instance=request.user.profile), password_form)
+
+
+@login_required
+def remove_profile_photo(request):
+    if request.method == 'POST':
+        profile = request.user.profile
+        if profile.profile_picture:
+            try:
+                profile.profile_picture.delete(save=False)
+            except Exception:
+                # The stored file may already be gone; the profile should still drop the reference.
+                logger.exception('Could not delete profile picture file for user %s', request.user.pk)
+            profile.profile_picture = None
+            profile.save(update_fields=['profile_picture'])
+            messages.success(request, 'Profile photo removed.')
+    return redirect('accounts:settings')
+
+
+@login_required
+def confirm_email_change(request):
+    change = email_change.pending_change(request.user)
+    if change is None:
+        messages.info(request, 'There is no email change waiting for confirmation.')
+        return redirect('accounts:settings')
+
+    form = PasswordResetOTPForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        result, attempts_left = email_change.confirm_email_change(request.user, form.cleaned_data['otp'])
+        if result == verification.VERIFIED:
+            messages.success(request, 'Your email address has been updated.')
+            return redirect('accounts:profile')
+        if result == email_change.TAKEN:
+            messages.error(request, 'That email is now used by another account. Choose a different one.')
+            return redirect('accounts:settings')
+        if result == verification.INVALID:
+            form.add_error('otp', f'That code is incorrect. {attempts_left} attempt{"s" if attempts_left != 1 else ""} left.')
+        elif result == verification.EXPIRED:
+            form.add_error('otp', 'This code has expired. Use Resend code to get a new one.')
+        else:
+            form.add_error('otp', 'Too many incorrect attempts. Use Resend code to get a new one.')
+
+    return render(request, 'accounts/confirm_email_change.html', {
+        'form': form,
+        'masked_email': verification.mask_email(change.new_email),
+        'resend_wait': email_change.resend_wait_seconds(change),
     })
+
+
+@login_required
+def confirm_email_change_resend(request):
+    if request.method == 'POST':
+        change = email_change.pending_change(request.user)
+        if change is None:
+            return redirect('accounts:settings')
+        wait = email_change.resend_wait_seconds(change)
+        if wait:
+            messages.info(request, f'Please wait {wait} seconds before requesting another code.')
+        elif email_change.resend_code(request.user):
+            messages.success(request, f'A new code is on its way to {verification.mask_email(change.new_email)}.')
+        else:
+            messages.error(request, "We couldn't send the code right now. Please try again in a moment.")
+    return redirect('accounts:confirm_email_change')
+
+
+@login_required
+def cancel_email_change(request):
+    if request.method == 'POST':
+        PendingEmailChange.objects.filter(user=request.user).delete()
+        messages.info(request, 'Email change cancelled. Your email address is unchanged.')
+    return redirect('accounts:settings')
 
 
 @login_required
