@@ -528,7 +528,7 @@ html[data-theme="light"] .theme-toggle .icon-sun { display: block; }
 .task-check i { font-size: 12px; color: #fff; opacity: 0; transition: opacity .2s var(--ease); }
 .task-check.done i { opacity: 1; }
 .task-body { flex: 1; min-width: 0; }
-.task-title { font-size: 13px; font-weight: 500; }
+.task-title { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 .task-item.completed .task-title { color: var(--text-3); text-decoration: line-through; }
 .task-meta { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 .tag {
@@ -876,8 +876,14 @@ html[data-theme="dark"] .xp-level-badge { color: #1a1208; }
 .task-select i { font-size: 10px; color: #fff; opacity: 0; }
 .task-select.selected i { opacity: 1; }
 .task-due { font-size: 12px; color: var(--text-2); }
+.task-due-time { white-space: nowrap; }
+.task-due-flag { background: var(--danger-soft); border-radius: 999px; color: var(--danger); display: inline-block; font-size: 10px; font-weight: 600; margin-left: 4px; padding: 1px 7px; }
+.task-due-help { color: var(--text-2); display: block; font-size: 11px; margin: -6px 0 14px; }
 .task-table-row .task-title { font-size: 13px; }
-.task-table-row .tag { font-size: 10px; }
+/* Grid and flex children default to min-width:auto, so one long word would stretch the row. */
+.task-table-row > *, .task-table-head > * { min-width: 0; }
+.task-table-row .task-check { flex-shrink: 0; }
+.task-table-row .tag { font-size: 10px; max-width: 100%; overflow-wrap: anywhere; }
 .task-table-row .task-actions { opacity: 1; justify-content: flex-end; }
 /* Bulk selection is an intentional mode, not always-on page chrome. */
 .task-table:not(.selection-mode) .task-table-head,
@@ -1326,6 +1332,7 @@ html[data-theme="light"] .heatmap-cell.l4 { background: var(--accent); }
 .notif-icon.blue { background: var(--info-soft); color: var(--info); }
 .notif-icon.amber { background: var(--accent-soft); color: var(--accent); }
 .notif-icon.green { background: var(--success-soft); color: var(--success); }
+.notif-icon.red { background: var(--danger-soft); color: var(--danger); }
 .notif-content { min-width: 0; }
 .notif-content strong { color: var(--text-0); display: block; font-size: 14px; margin-bottom: 4px; }
 .notif-content p { color: var(--text-2); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1446,9 +1453,11 @@ html[data-theme="dark"] .ai-msg.user .ai-msg-bubble { color: #1a1208; }
   from { opacity: 0; transform: scale(.96) translateY(10px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.modal-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-.modal-title { font-size: 16px; font-weight: 600; }
-.modal-body { padding: 22px; }
+.modal-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.modal-title { font-size: 16px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.modal-head .icon-btn, .modal-head .modal-close { flex-shrink: 0; }
+/* Long user-entered names (e.g. in delete confirmations) wrap instead of overflowing the modal. */
+.modal-body { padding: 22px; overflow-wrap: anywhere; }
 .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
 .form-group { margin-bottom: 14px; }
 .form-label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
@@ -1924,3 +1933,13 @@ html[data-theme="dark"] .xp-popup { text-shadow: 0 0 20px rgba(245, 165, 36, .5)
   .page-head .profile-actions .btn { font-size: 10px; padding-left: 3px; padding-right: 3px; }
   .page-head .profile-actions .btn > i { display: none; }
 }
+@media (max-width: 640px) {
+  /* Date and time stay side by side on phones; both inputs fit comfortably. */
+  .form-row.task-due-row { grid-template-columns: 1fr 1fr; }
+}
+input[type="date"]:not(:disabled), input[type="time"]:not(:disabled) { cursor: pointer; }
+input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+.dashboard-empty-row .dashboard-empty-link { align-items: center; color: var(--accent); display: inline-flex; font-size: 12px; font-weight: 600; gap: 4px; margin-top: 4px; text-decoration: none; }
+.dashboard-empty-row .dashboard-empty-link i { color: inherit; font-size: 12px; transition: transform .15s var(--ease); }
+.dashboard-empty-row .dashboard-empty-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dashboard-empty-row .dashboard-empty-link:hover i { transform: translateX(2px); }
