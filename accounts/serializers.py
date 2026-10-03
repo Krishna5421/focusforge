@@ -26,6 +26,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'password']
+        # A real email is required: the account stays inactive until the emailed code is confirmed.
+        extra_kwargs = {'email': {'required': True, 'allow_blank': False}}
 
     def validate_email(self, value):
         email = value.strip()
@@ -43,5 +45,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', ''),
             email=validated_data.get('email', ''),
             password=validated_data['password'],
+            is_active=False,
         )
         return user

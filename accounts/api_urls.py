@@ -4,6 +4,8 @@ from . import api_views
 
 urlpatterns = [
     path('register/', api_views.RegisterAPIView.as_view(), name='api_register'),
+    path('verify-email/', api_views.VerifyEmailAPIView.as_view(), name='api_verify_email'),
+    path('verify-email/resend/', api_views.ResendVerificationAPIView.as_view(), name='api_verify_email_resend'),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('profile/', api_views.ProfileAPIView.as_view(), name='api_profile'),

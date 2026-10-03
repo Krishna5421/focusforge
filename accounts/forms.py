@@ -32,8 +32,22 @@ class RegisterForm(UserCreationForm):
 
 
 class StyledLoginForm(AuthenticationForm):
-    username = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Username'}))
+    username = forms.CharField(
+        label='Username or email',
+        max_length=254,
+        widget=forms.TextInput(attrs={'placeholder': 'Username or email', 'autocomplete': 'username'}),
+    )
     password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}))
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        'invalid_login': 'Incorrect username/email or password. Please try again.',
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # AuthenticationForm limits this to the username length (150); emails can be up to 254.
+        self.fields['username'].max_length = 254
+        self.fields['username'].widget.attrs['maxlength'] = 254
 
 
 class ProfileForm(forms.ModelForm):
@@ -74,7 +88,8 @@ class PasswordResetRequestForm(forms.Form):
 
 class PasswordResetOTPForm(forms.Form):
     otp = forms.CharField(label='6-digit code', min_length=6, max_length=6,
-        widget=forms.TextInput(attrs={'placeholder': '000000', 'inputmode': 'numeric', 'autocomplete': 'one-time-code'}))
+        widget=forms.TextInput(attrs={'placeholder': '000000', 'inputmode': 'numeric', 'autocomplete': 'one-time-code'}),
+        error_messages={key: 'Enter the 6-digit code from your email.' for key in ('required', 'min_length', 'max_length')})
 
     def clean_otp(self):
         otp = self.cleaned_data['otp'].strip()

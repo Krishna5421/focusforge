@@ -9,16 +9,17 @@ from django.utils import timezone
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 from datetime import timedelta
-from xml.sax.saxutils import escape
+import logging
 import secrets
 from tasks.models import Task
-from habits.models import Habit, HabitLog
+from habits.models import Habit
 from goals.models import Goal, Milestone
-from pomodoro.models import PomodoroSession
-from study.models import StudySession
 from .forms import (RegisterForm, StyledLoginForm, ProfileForm, UserUpdateForm,
                     PasswordResetRequestForm, PasswordResetOTPForm, PasswordResetSetForm)
 from .models import PasswordResetOTP
+from . import verification
+
+logger = logging.getLogger(__name__)
 
 
 def weekly_consistency_score(user, today=None):
@@ -59,19 +60,21 @@ def register_view(request):
         return redirect('core:dashboard')
 
     if request.method == 'POST':
+        # Frees usernames/emails held by sign-ups that were never verified.
+        verification.purge_stale_unverified()
         register_form = RegisterForm(request.POST)
         if register_form.is_valid():
             try:
                 with transaction.atomic():
-                    user = register_form.save()
+                    user = register_form.save(commit=False)
+                    user.is_active = False  # Activated once the emailed code is entered.
+                    user.save()
             except IntegrityError:
                 # A second, near-simultaneous registration can pass validation
                 # before the first request commits. Keep this a field error.
                 register_form.add_error('username', 'This username is already in use. Please choose another one.')
             else:
-                login(request, user)
-                messages.success(request, 'Account created successfully. Welcome to FocusForge!')
-                return redirect('core:dashboard')
+                return start_email_verification(request, user, 'Account created!')
     else:
         register_form = RegisterForm()
 
@@ -95,7 +98,10 @@ def login_view(request):
             messages.success(request, f'Welcome back, {user.username}!')
             return redirect('core:dashboard')
         else:
-            messages.error(request, 'Invalid username or password.')
+            pending_user = verification.find_pending_user(request.POST.get('username'), request.POST.get('password'))
+            if pending_user:
+                return start_email_verification(request, pending_user, 'Please verify your email first.')
+            messages.error(request, 'Invalid username/email or password.')
     else:
         login_form = StyledLoginForm()
 
@@ -105,6 +111,90 @@ def login_view(request):
         'register_form': register_form,
         'initial_view': 'login',
     })
+
+
+def start_email_verification(request, user, intro):
+    """Send a code (unless one was sent moments ago) and move the user to the verify page."""
+    request.session[verification.SESSION_KEY] = user.pk
+    if verification.resend_wait_seconds(user):
+        messages.info(request, f'{intro} Use the code we already sent to {verification.mask_email(user.email)}.')
+    elif verification.send_verification_code(user):
+        messages.success(request, f'{intro} We sent a code to {verification.mask_email(user.email)}.')
+    else:
+        messages.error(request, "We couldn't send the verification email right now. Please use Resend code in a moment.")
+    return redirect('accounts:verify_email')
+
+
+def pending_verification_user(request):
+    """The account waiting for verification in this session, or None."""
+    user_id = request.session.get(verification.SESSION_KEY)
+    user = User.objects.filter(pk=user_id).first() if user_id else None
+    if not verification.is_pending(user):
+        request.session.pop(verification.SESSION_KEY, None)
+        return None
+    return user
+
+
+def verify_email(request):
+    if request.user.is_authenticated:
+        return redirect('core:dashboard')
+    user = pending_verification_user(request)
+    if user is None:
+        messages.info(request, 'Your verification session has ended. Log in to get a new code.')
+        return redirect('accounts:login')
+
+    form = PasswordResetOTPForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        result, attempts_left = verification.verify_code(user, form.cleaned_data['otp'])
+        if result == verification.VERIFIED:
+            request.session.pop(verification.SESSION_KEY, None)
+            user.refresh_from_db()
+            user.skip_login_email = True  # They just got the welcome email; skip "Welcome back".
+            login(request, user)
+            messages.success(request, 'Email verified. Welcome to FocusForge!')
+            return redirect('core:dashboard')
+        if result == verification.INVALID:
+            form.add_error('otp', f'That code is incorrect. {attempts_left} attempt{"s" if attempts_left != 1 else ""} left.')
+        elif result == verification.EXPIRED:
+            form.add_error('otp', 'This code has expired. Use Resend code to get a new one.')
+        elif verification.resend_wait_seconds(user) == 0 and verification.send_verification_code(user):
+            form.add_error('otp', "Too many incorrect attempts. We've emailed you a new code.")
+        else:
+            form.add_error('otp', 'Too many incorrect attempts. Use Resend code to get a new one.')
+
+    return render(request, 'accounts/verify_email.html', {
+        'form': form,
+        'masked_email': verification.mask_email(user.email),
+        'resend_wait': verification.resend_wait_seconds(user),
+    })
+
+
+def verify_email_resend(request):
+    if request.method != 'POST':
+        return redirect('accounts:verify_email')
+    user = pending_verification_user(request)
+    if user is None:
+        messages.info(request, 'Your verification session has ended. Log in to get a new code.')
+        return redirect('accounts:login')
+    wait = verification.resend_wait_seconds(user)
+    if wait:
+        messages.info(request, f'Please wait {wait} seconds before requesting another code.')
+    elif verification.send_verification_code(user):
+        messages.success(request, f'A new code is on its way to {verification.mask_email(user.email)}.')
+    else:
+        messages.error(request, "We couldn't send the code right now. Please try again in a moment.")
+    return redirect('accounts:verify_email')
+
+
+def verify_email_restart(request):
+    """'Wrong email?': drop the unverified sign-up so the user can register again."""
+    if request.method == 'POST':
+        user = pending_verification_user(request)
+        if user is not None:
+            user.delete()
+        request.session.pop(verification.SESSION_KEY, None)
+        messages.info(request, 'Sign up again with the correct email address.')
+    return redirect('accounts:register')
 
 
 @login_required
@@ -127,8 +217,13 @@ def password_reset_request(request):
                     defaults={'code_hash': make_password(code), 'expires_at': timezone.now() + timedelta(minutes=10), 'attempts': 0},
                 )
                 from notifications.emailing import send_focusforge_email_async
-                send_focusforge_email_async(user, 'FocusForge · Your password reset code', 'Your password reset code',
-                                            f'Use this code to reset your password: {code}. It expires in 10 minutes. If you did not request this, you can safely ignore this email.')
+                send_focusforge_email_async(
+                    user, f'{code} is your FocusForge password reset code', 'Reset your password',
+                    'Enter this code on the FocusForge password reset page to choose a new password.',
+                    code=code, code_note='Expires in 10 minutes', preheader=f'Your code is {code}. It expires in 10 minutes.',
+                    footer_reason='Someone asked to reset the password for this account. If it was not you, '
+                                  'ignore this email; your password will stay the same.',
+                )
                 request.session['password_reset_user_id'] = user.pk
                 messages.success(request, 'Password reset email sent successfully.')
                 return redirect('accounts:password_reset_verify')
@@ -215,123 +310,17 @@ def settings_view(request):
 
 @login_required
 def export_data(request):
-    user = request.user
+    from .reports import build_productivity_report
+
     period = request.GET.get('period', 'weekly')
-    today = timezone.localdate()
-    if period == 'monthly':
-        start_date = today.replace(day=1)
-        period_label = today.strftime('%B %Y')
-    else:
+    if period not in ('weekly', 'monthly'):
         period = 'weekly'
-        start_date = today - timedelta(days=today.weekday())
-        period_label = f'{start_date:%b %d} - {today:%b %d, %Y}'
-
-    completed_tasks = Task.objects.filter(
-        user=user, status='COMPLETED', completed_at__date__range=(start_date, today),
-    ).order_by('-completed_at')
-    habit_checkins = HabitLog.objects.filter(
-        habit__user=user, completed=True, date__range=(start_date, today),
-    ).count()
-    focus_sessions = PomodoroSession.objects.filter(
-        user=user, status='COMPLETED', completed_at__date__range=(start_date, today),
-    ).select_related('task')
-    focus_seconds = sum(session.actual_focus_seconds or session.duration_minutes * 60 for session in focus_sessions)
-    study_minutes = sum(session.duration_minutes for session in StudySession.objects.filter(
-        user=user, date__range=(start_date, today),
-    ))
-
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-
-    response = HttpResponse(content_type='application/pdf')
+    try:
+        pdf = build_productivity_report(request.user, period)
+    except Exception:
+        logger.exception('PDF report export failed for user %s', request.user.pk)
+        messages.error(request, 'We could not generate your report right now. Please try again in a moment.')
+        return redirect('accounts:profile')
+    response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="focusforge-{period}-report.pdf"'
-    document = SimpleDocTemplate(response, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
-                                 topMargin=16 * mm, bottomMargin=18 * mm)
-    styles = getSampleStyleSheet()
-    title = ParagraphStyle('FocusForgeTitle', parent=styles['Title'], textColor=colors.white, fontSize=25, leading=30, spaceAfter=2)
-    eyebrow = ParagraphStyle('FocusForgeEyebrow', parent=styles['Normal'], textColor=colors.HexColor('#fbbf24'), fontSize=8, leading=11, fontName='Helvetica-Bold', spaceAfter=5)
-    subtitle = ParagraphStyle('FocusForgeSubtitle', parent=styles['Normal'], textColor=colors.HexColor('#7b8aa3'), fontSize=9, leading=14)
-    heading = ParagraphStyle('FocusForgeHeading', parent=styles['Heading2'], textColor=colors.HexColor('#162235'), fontSize=14, leading=18, fontName='Helvetica-Bold', spaceBefore=17, spaceAfter=8)
-    body = ParagraphStyle('FocusForgeBody', parent=styles['BodyText'], textColor=colors.HexColor('#42526b'), fontSize=9, leading=14)
-    metric = ParagraphStyle('FocusForgeMetric', parent=body, alignment=TA_CENTER, fontSize=9, leading=14)
-    metric_value = ParagraphStyle('FocusForgeMetricValue', parent=metric, textColor=colors.HexColor('#142033'), fontSize=20, leading=25, fontName='Helvetica-Bold')
-
-    metrics = [
-        ('Tasks completed', str(completed_tasks.count())),
-        ('Habit check-ins', str(habit_checkins)),
-        ('Focus time', f'{focus_seconds // 3600}h {(focus_seconds % 3600) // 60}m'),
-        ('Study time', f'{study_minutes // 60}h {study_minutes % 60}m'),
-    ]
-    if period == 'weekly':
-        metrics.append(('Weekly consistency', f'{weekly_consistency_score(user)}%'))
-
-    display_name = user.get_full_name() or user.username
-    header = Table([[
-        [Paragraph('PERSONAL PRODUCTIVITY REPORT', eyebrow), Paragraph('FocusForge', title), Paragraph(f'{escape(display_name)}  |  {period_label}', ParagraphStyle('FocusForgeHeaderSub', parent=subtitle, textColor=colors.HexColor('#b6c3d7')))]
-    ]], colWidths=[170 * mm])
-    header.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#101827')),
-        ('BOX', (0, 0), (-1, -1), 0, colors.white),
-        ('LEFTPADDING', (0, 0), (-1, -1), 18), ('RIGHTPADDING', (0, 0), (-1, -1), 18),
-        ('TOPPADDING', (0, 0), (-1, -1), 16), ('BOTTOMPADDING', (0, 0), (-1, -1), 16),
-    ]))
-    story = [header, Spacer(1, 7 * mm), Paragraph('At a glance', heading)]
-
-    metric_rows = []
-    for index in range(0, len(metrics), 3):
-        group = metrics[index:index + 3]
-        cells = []
-        for label, value in group:
-            cells.append([Paragraph(escape(label), metric), Paragraph(escape(value), metric_value)])
-        while len(cells) < 3:
-            cells.append('')
-        metric_rows.append(cells)
-    metric_table = Table(metric_rows, colWidths=[(170 * mm) / 3] * 3, hAlign='LEFT')
-    metric_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f7f9fc')),
-        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#dce4ef')),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#dce4ef')),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 12), ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-    ]))
-    story.extend([metric_table, Paragraph('Completed tasks', heading)])
-    if completed_tasks:
-        rows = [[Paragraph('<b>Task</b>', body), Paragraph('<b>Completed</b>', body)]]
-        rows.extend([
-            [Paragraph(escape(task.title), body), Paragraph(timezone.localtime(task.completed_at).strftime('%b %d'), body)]
-            for task in completed_tasks[:12]
-        ])
-        task_table = Table(rows, colWidths=[125 * mm, 45 * mm])
-        task_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#18263a')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#dce4ef')),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 7), ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-        ]))
-        story.append(task_table)
-    else:
-        story.append(Paragraph('No completed tasks in this period yet.', body))
-
-    story.extend([
-        Paragraph('Progress snapshot', heading),
-        Paragraph(f'You completed <b>{habit_checkins}</b> habit check-in(s), logged <b>{focus_seconds // 60}</b> focus minute(s), and studied for <b>{study_minutes}</b> minute(s) during this period.', body),
-    ])
-
-    def add_footer(canvas, doc):
-        canvas.saveState()
-        canvas.setStrokeColor(colors.HexColor('#dce4ef'))
-        canvas.line(18 * mm, 13 * mm, 192 * mm, 13 * mm)
-        canvas.setFillColor(colors.HexColor('#7b8aa3'))
-        canvas.setFont('Helvetica', 8)
-        canvas.drawString(18 * mm, 8 * mm, 'FocusForge  •  Build better days, one session at a time.')
-        canvas.drawRightString(192 * mm, 8 * mm, f'Page {doc.page}')
-        canvas.restoreState()
-
-    document.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
     return response
