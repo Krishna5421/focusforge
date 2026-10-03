@@ -12,6 +12,11 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('profile/', views.profile_view, name='profile'),
     path('settings/', views.settings_view, name='settings'),
+    path('settings/password/', views.change_password, name='change_password'),
+    path('settings/remove-photo/', views.remove_profile_photo, name='remove_profile_photo'),
+    path('settings/confirm-email/', views.confirm_email_change, name='confirm_email_change'),
+    path('settings/confirm-email/resend/', views.confirm_email_change_resend, name='confirm_email_change_resend'),
+    path('settings/confirm-email/cancel/', views.cancel_email_change, name='cancel_email_change'),
     path('export/', views.export_data, name='export_data'),
 
     path('password-reset/', views.password_reset_request, name='password_reset'),
