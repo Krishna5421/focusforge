@@ -38,12 +38,15 @@
       </a>
       <a class="nav-item {% if request.resolver_match.app_name == 'habits' %}active{% endif %}" href="{% url 'habits:habit_list' %}">
         <i class="bi bi-heart"></i> Habits
+        {% if sidebar_habits_left %}<span class="nav-badge" title="Habits left to do today">{{ sidebar_habits_left }}</span>{% endif %}
       </a>
       <a class="nav-item {% if request.resolver_match.app_name == 'goals' %}active{% endif %}" href="{% url 'goals:goal_list' %}">
         <i class="bi bi-bullseye"></i> Goals
+        {% if sidebar_active_goals %}<span class="nav-badge" title="Active goals">{{ sidebar_active_goals }}</span>{% endif %}
       </a>
       <a class="nav-item {% if request.resolver_match.url_name == 'deadlines' %}active{% endif %}" href="{% url 'core:deadlines' %}">
         <i class="bi bi-calendar-event"></i> Deadlines
+        {% if sidebar_deadlines %}<span class="nav-badge" title="Due in the next 14 days, including overdue">{{ sidebar_deadlines }}</span>{% endif %}
       </a>
       <a class="nav-item {% if request.resolver_match.app_name == 'pomodoro' %}active{% endif %}" href="{% url 'pomodoro:pomodoro_page' %}">
         <i class="bi bi-stopwatch"></i> Focus

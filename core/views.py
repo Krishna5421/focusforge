@@ -246,7 +246,7 @@ def global_search(request):
 @login_required
 def deadlines(request):
     user = request.user
-    today = timezone.now().date()
+    today = timezone.localdate()
     later_limit = today + timedelta(days=14)
     tomorrow = today + timedelta(days=1)
     week_limit = today + timedelta(days=7)
