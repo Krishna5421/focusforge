@@ -38,13 +38,14 @@
   </div>
 
   {% for task in tasks %}
-    <div class="task-table-row {% if task.status == 'COMPLETED' %}completed{% endif %}"
+    <div class="task-table-row {% if task.status == 'COMPLETED' %}completed{% elif task.due_date and task.due_date < now %}overdue{% endif %}"
          data-task-id="{{ task.pk }}"
          data-title="{{ task.title|escape }}"
          data-description="{{ task.description|escape }}"
          data-category="{% if task.category %}{{ task.category.pk }}{% endif %}"
          data-priority="{{ task.priority }}"
          data-due="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
+         data-due-time="{% if task.due_date and task.due_date|date:'H:i' != '23:59' %}{{ task.due_date|date:'H:i' }}{% endif %}"
          data-tags="{% for tag in task.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">
       <button class="task-select" type="button" aria-label="Select {{ task.title }}"><i class="bi bi-check"></i></button>
       <div>
@@ -53,7 +54,7 @@
                   aria-label="Complete {{ task.title }}">
             <i class="bi bi-check"></i>
           </button>
-          <div>
+          <div class="task-body">
             <div class="task-title">{{ task.title }}</div>
             <div class="task-meta">
               {% for tag in task.tags.all %}<span class="tag">#{{ tag.name }}</span>{% endfor %}
@@ -70,6 +71,8 @@
       <div class="task-due">
         {% if task.due_date %}
           {% if task.due_date|date:'Y-m-d' == today|date:'Y-m-d' %}Today{% else %}{{ task.due_date|date:'M j' }}{% endif %}
+          {% if task.due_date|date:'H:i' != '23:59' %}<span class="task-due-time">· {{ task.due_date|date:'g:i A' }}</span>{% endif %}
+          {% if task.status != 'COMPLETED' and task.due_date < now %}<span class="task-due-flag">Overdue</span>{% endif %}
         {% else %}
           —
         {% endif %}
@@ -125,10 +128,17 @@
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Due date</label>
-          <input class="form-input" name="due_date" type="date" value="{% now 'Y-m-d' %}">
+        <div class="form-row task-due-row">
+          <div class="form-group">
+            <label class="form-label" for="taskDueDate">Due date</label>
+            <input class="form-input" id="taskDueDate" name="due_date" type="date" value="{% now 'Y-m-d' %}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="taskDueTime">Time (optional)</label>
+            <input class="form-input" id="taskDueTime" name="due_time" type="time">
+          </div>
         </div>
+        <small class="form-help task-due-help">Leave the time empty to make it due by the end of the day. You'll get a reminder 1 hour before it's due.</small>
         <div class="form-group">
           <label class="form-label">Tags (comma separated)</label>
           <input class="form-input" name="tags" placeholder="design, urgent, review">
@@ -186,9 +196,11 @@ function openTaskModal(row) {
     taskForm.category.value = row.dataset.category;
     taskForm.priority.value = row.dataset.priority;
     taskForm.due_date.value = row.dataset.due;
+    taskForm.due_time.value = row.dataset.dueTime || '';
     taskForm.tags.value = row.dataset.tags;
   } else {
     taskForm.due_date.value = '{% now "Y-m-d" %}';
+    taskForm.due_time.value = '';
   }
   taskModal.classList.add('show');
   taskForm.title.focus();
@@ -222,16 +234,29 @@ deleteTaskModal.onclick = e => { if (e.target === deleteTaskModal) closeDeleteMo
 
 taskForm.onsubmit = async e => {
   e.preventDefault();
-  const url = editingId ? `/tasks/ajax/${editingId}/update/` : '{% url "tasks:ajax_task_create" %}',
-        response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': taskCsrf }, body: new FormData(taskForm) }),
-        data = await response.json();
-  if (!response.ok) {
-    const error = document.getElementById('taskFormError');
-    error.textContent = data.error || 'Could not save task.';
-    error.hidden = false;
+  const error = document.getElementById('taskFormError'),
+        saveButton = document.getElementById('saveTaskButton'),
+        showError = message => { error.textContent = message; error.hidden = false; };
+  error.hidden = true;
+  if (taskForm.due_time.value && !taskForm.due_date.value) {
+    showError('Choose a due date for the selected time.');
     return;
   }
-  window.FocusForge?.redirectWithToast(window.location.href, editingId ? 'Task updated successfully.' : 'Task added successfully.');
+  const url = editingId ? `/tasks/ajax/${editingId}/update/` : '{% url "tasks:ajax_task_create" %}';
+  saveButton.disabled = true;
+  try {
+    const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': taskCsrf }, body: new FormData(taskForm) }),
+          data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showError(data.error || 'Could not save the task. Please refresh the page and try again.');
+      return;
+    }
+    window.FocusForge?.redirectWithToast(window.location.href, editingId ? 'Task updated successfully.' : 'Task added successfully.');
+  } catch (err) {
+    showError('Could not reach the server. Check your connection and try again.');
+  } finally {
+    saveButton.disabled = false;
+  }
 };
 
 async function post(url, data) {

@@ -39,13 +39,14 @@
         <small class="form-help">Choose today or a future date.</small>
       </div>
       <div class="form-group">
-        <label>Time</label
+        <label>Time (optional)</label
         ><input
           class="form-input"
           type="time"
           name="due_time"
-          value="{% if form.instance.due_date %}{{ form.instance.due_date|date:'H:i' }}{% endif %}"
+          value="{% if form.instance.due_date and form.instance.due_date|date:'H:i' != '23:59' %}{{ form.instance.due_date|date:'H:i' }}{% endif %}"
         />
+        <small class="form-help">Empty means end of day. Reminder 1 hour before.</small>
       </div>
     </div>
     <div class="form-group">
