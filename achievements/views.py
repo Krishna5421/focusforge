@@ -1,3 +1,5 @@
+from collections import Counter
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import render
@@ -143,6 +145,7 @@ def achievement_list(request):
         'unlocked': unlocked,
         'locked': locked,
         'catalog': catalog,
+        'category_counts': Counter(item['category_key'] for item in catalog),
         'xp_to_next_level': xp_for_next_level,
         'xp_level_progress': profile.total_xp % 100,
         'next_level': level + 1,

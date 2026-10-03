@@ -40,11 +40,11 @@
 
   <div class="achievement-filters" role="group" aria-label="Filter achievements">
     <button class="achievement-filter active" type="button" data-achievement-filter="all" aria-pressed="true">All <span>{{ catalog|length }}</span></button>
-    <button class="achievement-filter" type="button" data-achievement-filter="focus" aria-pressed="false"><i class="bi bi-stopwatch" aria-hidden="true"></i> Focus</button>
-    <button class="achievement-filter" type="button" data-achievement-filter="study" aria-pressed="false"><i class="bi bi-book" aria-hidden="true"></i> Study</button>
-    <button class="achievement-filter" type="button" data-achievement-filter="habits" aria-pressed="false"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Habits</button>
-    <button class="achievement-filter" type="button" data-achievement-filter="tasks" aria-pressed="false"><i class="bi bi-check2-square" aria-hidden="true"></i> Tasks</button>
-    <button class="achievement-filter" type="button" data-achievement-filter="goals" aria-pressed="false"><i class="bi bi-bullseye" aria-hidden="true"></i> Goals</button>
+    <button class="achievement-filter" type="button" data-achievement-filter="focus" aria-pressed="false"><i class="bi bi-stopwatch" aria-hidden="true"></i> Focus <span>{{ category_counts.focus|default:0 }}</span></button>
+    <button class="achievement-filter" type="button" data-achievement-filter="study" aria-pressed="false"><i class="bi bi-book" aria-hidden="true"></i> Study <span>{{ category_counts.study|default:0 }}</span></button>
+    <button class="achievement-filter" type="button" data-achievement-filter="habits" aria-pressed="false"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Habits <span>{{ category_counts.habits|default:0 }}</span></button>
+    <button class="achievement-filter" type="button" data-achievement-filter="tasks" aria-pressed="false"><i class="bi bi-check2-square" aria-hidden="true"></i> Tasks <span>{{ category_counts.tasks|default:0 }}</span></button>
+    <button class="achievement-filter" type="button" data-achievement-filter="goals" aria-pressed="false"><i class="bi bi-bullseye" aria-hidden="true"></i> Goals <span>{{ category_counts.goals|default:0 }}</span></button>
   </div>
 
   <div class="achievements-grid" id="achievementsGrid" aria-live="polite">
