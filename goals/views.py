@@ -111,7 +111,8 @@ def record_goal_notifications(milestone):
                     f'You completed “{goal.title}”.', goal.pk)
         from notifications.emailing import send_focusforge_email_async
         send_focusforge_email_async(goal.user, 'FocusForge · Goal completed!', 'You completed a goal!',
-                                    f'Congratulations — “{goal.title}” is complete. Take a moment to celebrate your progress.', '/goals/')
+                                    f'Congratulations — “{goal.title}” is complete. Take a moment to celebrate your progress.', '/goals/',
+                                    action_label='View your goals')
 
 
 def milestone_titles(value):

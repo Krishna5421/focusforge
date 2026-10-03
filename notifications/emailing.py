@@ -5,7 +5,6 @@ from threading import Thread
 import requests
 from django.conf import settings
 from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +60,47 @@ def send_brevo_email(recipient, subject, html_content, text_content):
     return True
 
 
-def send_focusforge_email_async(user, subject, heading, message, action_url=''):
-    """Queue Brevo delivery on a daemon thread so web requests never wait for it."""
+def absolute_url(path):
+    """Turn a site path into a full link that works from an email client."""
+    if not path:
+        return ''
+    return f'{settings.SITE_URL}{path}' if path.startswith('/') else path
+
+
+def render_focusforge_email(user, subject, heading, message, action_url='', *, action_label='Open FocusForge',
+                            preheader='', code='', code_note='', details=None, steps=None, secondary_text='',
+                            secondary_label='', secondary_url='', footer_reason=''):
+    """Render the shared FocusForge email layout. Returns (html, plain_text)."""
+    context = {
+        'subject': subject,
+        'name': user.first_name or user.username,
+        'heading': heading,
+        'message': message,
+        'preheader': preheader or message[:110],
+        'action_url': absolute_url(action_url),
+        'action_label': action_label,
+        'code': code,
+        'code_note': code_note,
+        'details': details or [],
+        'steps': [{**step, 'url': absolute_url(step['url'])} for step in (steps or [])],
+        'secondary_text': secondary_text,
+        'secondary_label': secondary_label,
+        'secondary_url': absolute_url(secondary_url),
+        'footer_reason': footer_reason or f'You are receiving this because you have a FocusForge account ({user.email}).',
+        'site_url': settings.SITE_URL,
+        'settings_url': absolute_url('/accounts/settings/') if user.is_active else '',
+        'site_name': 'FocusForge',
+    }
+    html = render_to_string('emails/focusforge_email.html', context)
+    text = render_to_string('emails/focusforge_email.txt', context)
+    return html, text
+
+
+def send_focusforge_email_async(user, subject, heading, message, action_url='', **extras):
+    """Queue Brevo delivery on a daemon thread so web requests never wait for it.
+
+    `extras` are the optional layout pieces of render_focusforge_email (code, details, steps, ...).
+    """
     recipient = (user.email or '').strip()
     if not recipient:
         return False
@@ -71,20 +109,10 @@ def send_focusforge_email_async(user, subject, heading, message, action_url=''):
     if 'test' in sys.argv:
         return False
 
-    if action_url and action_url.startswith('/'):
-        action_url = f'{settings.SITE_URL}{action_url}'
-    context = {
-        'name': user.first_name or user.username,
-        'heading': heading,
-        'message': message,
-        'action_url': action_url,
-        'site_name': 'FocusForge',
-    }
-
     def deliver():
         try:
-            html = render_to_string('emails/focusforge_email.html', context)
-            send_brevo_email(recipient, subject, html, strip_tags(html))
+            html, text = render_focusforge_email(user, subject, heading, message, action_url, **extras)
+            send_brevo_email(recipient, subject, html, text)
         except Exception:
             logger.exception('FocusForge email delivery failed for user id %s', user.pk)
 

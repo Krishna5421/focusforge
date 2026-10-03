@@ -21,7 +21,8 @@ def check_pending_tasks():
         if not Notification.objects.filter(user=task.user, type='TASK_REMINDER', related_object_id=task.id).exists():
             notify_once(task.user, 'TASK_REMINDER', 'Task due soon', f'“{task.title}” is due within 24 hours.', task.id)
             send_focusforge_email_async(task.user, 'FocusForge · Task due soon', 'A task is due soon',
-                                        f'“{task.title}” is due within 24 hours. Plan a focused block to finish it.', '/tasks/')
+                                        f'“{task.title}” is due within 24 hours. Plan a focused block to finish it.', '/tasks/',
+                                        action_label='View your tasks')
 
 
 def check_abandoned_pomodoro_sessions():
@@ -32,7 +33,8 @@ def check_abandoned_pomodoro_sessions():
         notify_once(session.user, 'POMODORO_ABANDONED', 'Focus session left running',
                     f'Your {session.duration_minutes}-minute focus session was auto-stopped.', session.id)
         send_focusforge_email_async(session.user, 'FocusForge · Focus session paused', 'Your focus session was left running',
-                                    'Your unfinished focus session was safely stopped. Resume when you are ready.', '/pomodoro/')
+                                    'Your unfinished focus session was safely stopped. Resume when you are ready.', '/pomodoro/',
+                                    action_label='Open the focus timer')
 
 
 def check_goal_deadlines():
@@ -41,7 +43,8 @@ def check_goal_deadlines():
         if not Notification.objects.filter(user=goal.user, type='GOAL_DEADLINE', related_object_id=goal.id).exists():
             notify_once(goal.user, 'GOAL_DEADLINE', 'Goal deadline approaching', f'“{goal.title}” is due within 3 days.', goal.id)
             send_focusforge_email_async(goal.user, 'FocusForge · Goal deadline approaching', 'Your goal deadline is close',
-                                        f'“{goal.title}” is due within 3 days. Review the remaining milestones today.', '/goals/')
+                                        f'“{goal.title}” is due within 3 days. Review the remaining milestones today.', '/goals/',
+                                        action_label='Review your goals')
 
 
 def check_daily_incomplete_items():
@@ -56,7 +59,8 @@ def check_daily_incomplete_items():
             Notification.objects.create(user=user, type='HABIT_REMINDER', title='Today’s check-in',
                                         message=f'{tasks} task(s) and {habits} habit(s) still need attention.')
             send_focusforge_email_async(user, 'FocusForge · Today’s check-in', 'A quick end-of-day check-in',
-                                        f'You have {tasks} task(s) and {habits} habit(s) still open for today.', '/')
+                                        f'You have {tasks} task(s) and {habits} habit(s) still open for today.', '/',
+                                        action_label='Open your dashboard')
 
 
 def check_inactive_study_sessions():
@@ -66,7 +70,8 @@ def check_inactive_study_sessions():
             notify_once(session.user, 'STUDY_REMINDER', 'Study session waiting',
                         f'Your {session.subject.name} study session is still unfinished.', session.pk)
             send_focusforge_email_async(session.user, 'FocusForge · Study session waiting', 'Your study session is still open',
-                                        f'Your {session.subject.name} session has not been completed yet. Continue it when ready.', '/study/')
+                                        f'Your {session.subject.name} session has not been completed yet. Continue it when ready.', '/study/',
+                                        action_label='Continue studying')
 
 
 def start_scheduler():

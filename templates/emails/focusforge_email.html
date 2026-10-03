@@ -1,34 +1,118 @@
 <!doctype html>
-<html>
-<body style="margin:0;background:#0b0d11;font-family:Arial,sans-serif;color:#f5f6f8">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="supported-color-schemes" content="dark light">
+  <title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0b0d11;font-family:Arial,Helvetica,sans-serif;color:#f5f6f8">
+  {# Inbox preview line; hidden in the message itself. #}
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:#0b0d11">{{ preheader }}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#0b0d11" style="background-color:#0b0d11">
     <tr>
-      <td align="center" style="padding:32px 16px">
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0"
-               style="max-width:600px;background:#12151c;border:1px solid #292f3b;border-radius:16px;overflow:hidden">
+      <td align="center" style="padding:32px 12px">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#12151c"
+               style="width:100%;max-width:600px;background-color:#12151c;border:1px solid #292f3b;border-radius:16px;overflow:hidden">
+
+          {# Header: solid amber for Outlook, gradient where supported. #}
           <tr>
-            <td style="padding:24px 30px;background:linear-gradient(135deg,#f5a524,#ff7a45);color:#17120a;font-size:22px;font-weight:bold">
-              FocusForge
+            <td bgcolor="#f5a524" style="background-color:#f5a524;background-image:linear-gradient(135deg,#f5a524,#ff7a45);padding:20px 28px">
+              <div style="color:#17120a;font-size:21px;font-weight:bold;letter-spacing:-0.2px">FocusForge</div>
             </td>
           </tr>
+
           <tr>
-            <td style="padding:30px">
-              <p style="margin:0 0 12px;color:#aeb4c0;font-size:15px">Hi {{ name }},</p>
-              <h1 style="margin:0 0 14px;font-size:23px;color:#fff">{{ heading }}</h1>
+            <td style="padding:30px 28px 8px">
+              <p style="margin:0 0 10px;color:#aeb4c0;font-size:15px">Hi {{ name }},</p>
+              <h1 style="margin:0 0 14px;font-size:23px;line-height:1.3;color:#ffffff">{{ heading }}</h1>
               <p style="margin:0;color:#c9ccd4;font-size:15px;line-height:1.6">{{ message }}</p>
-              {% if action_url %}
-                <p style="margin:25px 0 0">
-                  <a href="{{ action_url }}"
-                     style="display:inline-block;background:#f5a524;color:#17120a;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:bold">
-                    Open FocusForge
-                  </a>
-                </p>
-              {% endif %}
+            </td>
+          </tr>
+
+          {% if code %}
+            <tr>
+              <td style="padding:18px 28px 4px">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td align="center" bgcolor="#1a1f2a" style="background-color:#1a1f2a;border:1px solid #343b4a;border-radius:12px;padding:18px 12px">
+                      <div style="font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:bold;letter-spacing:10px;color:#ffffff;padding-left:10px">{{ code }}</div>
+                      {% if code_note %}<div style="margin-top:8px;color:#8b93a3;font-size:13px">{{ code_note }}</div>{% endif %}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          {% endif %}
+
+          {% if details %}
+            <tr>
+              <td style="padding:16px 28px 4px">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+                       bgcolor="#1a1f2a" style="background-color:#1a1f2a;border:1px solid #2b313d;border-radius:12px">
+                  {% for label, value in details %}
+                    <tr>
+                      <td style="padding:10px 16px;color:#8b93a3;font-size:13px;{% if not forloop.last %}border-bottom:1px solid #2b313d;{% endif %}">{{ label }}</td>
+                      <td align="right" style="padding:10px 16px;color:#e7e9ee;font-size:13px;font-weight:bold;{% if not forloop.last %}border-bottom:1px solid #2b313d;{% endif %}">{{ value }}</td>
+                    </tr>
+                  {% endfor %}
+                </table>
+              </td>
+            </tr>
+          {% endif %}
+
+          {% if steps %}
+            <tr>
+              <td style="padding:16px 28px 4px">
+                {% for step in steps %}
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:10px">
+                    <tr>
+                      <td width="34" valign="top" style="padding-top:2px">
+                        <div style="width:26px;height:26px;line-height:26px;border-radius:13px;background-color:#2a2416;color:#f5a524;font-size:13px;font-weight:bold;text-align:center">{{ forloop.counter }}</div>
+                      </td>
+                      <td valign="top">
+                        <a href="{{ step.url }}" style="color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none">{{ step.title }}</a>
+                        <div style="margin-top:2px;color:#aeb4c0;font-size:13px;line-height:1.5">{{ step.text }}</div>
+                      </td>
+                    </tr>
+                  </table>
+                {% endfor %}
+              </td>
+            </tr>
+          {% endif %}
+
+          {% if action_url %}
+            <tr>
+              <td align="center" style="padding:22px 28px 6px">
+                <table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto">
+                  <tr>
+                    <td bgcolor="#f5a524" style="background-color:#f5a524;border-radius:9px">
+                      <a href="{{ action_url }}" style="display:inline-block;padding:12px 20px;color:#17120a;font-size:15px;font-weight:bold;text-decoration:none;border-radius:9px">{{ action_label }}</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          {% endif %}
+
+          {% if secondary_url %}
+            <tr>
+              <td align="center" style="padding:12px 28px 0;color:#8b93a3;font-size:13px;text-align:center">
+                {{ secondary_text }} <a href="{{ secondary_url }}" style="color:#f5a524;text-decoration:underline">{{ secondary_label }}</a>
+              </td>
+            </tr>
+          {% endif %}
+
+          <tr>
+            <td style="padding:26px 28px 0">
+              <div style="border-top:1px solid #292f3b;font-size:1px;line-height:1px">&nbsp;</div>
             </td>
           </tr>
           <tr>
-            <td style="padding:18px 30px;border-top:1px solid #292f3b;color:#7d8491;font-size:12px">
-              Your productivity workspace · FocusForge
+            <td style="padding:14px 28px 24px;color:#7d8491;font-size:12px;line-height:1.6">
+              {{ footer_reason }}<br>
+              <a href="{{ site_url }}" style="color:#9aa1ad;text-decoration:underline">FocusForge</a>{% if settings_url %} · <a href="{{ settings_url }}" style="color:#9aa1ad;text-decoration:underline">Account settings</a>{% endif %}
             </td>
           </tr>
         </table>

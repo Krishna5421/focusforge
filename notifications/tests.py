@@ -79,3 +79,34 @@ class BrevoEmailTests(TestCase):
             timeout=10,
         )
         response.raise_for_status.assert_called_once_with()
+
+
+@override_settings(SITE_URL='https://focusforge.onrender.com')
+class EmailLayoutTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('mailer', email='mailer@example.com', password='x', first_name='Riya')
+
+    def test_links_are_absolute_and_text_version_is_clean(self):
+        from .emailing import render_focusforge_email
+        html, text = render_focusforge_email(
+            self.user, 'Subject', 'Heading', 'Body text.', '/tasks/', action_label='View your tasks',
+            details=[('Time', 'Oct 2')], secondary_text='Not you?', secondary_label='Reset', secondary_url='/accounts/password-reset/',
+        )
+        self.assertIn('href="https://focusforge.onrender.com/tasks/"', html)
+        self.assertIn('View your tasks', html)
+        self.assertNotIn('<img', html)
+        self.assertIn('View your tasks: https://focusforge.onrender.com/tasks/', text)
+        self.assertIn('Not you? Reset: https://focusforge.onrender.com/accounts/password-reset/', text)
+        self.assertNotIn('<', text)
+
+    def test_code_is_shown_prominently(self):
+        from .emailing import render_focusforge_email
+        html, text = render_focusforge_email(self.user, 'S', 'Verify your email', 'Enter this code.', code='482913',
+                                             code_note='Expires in 10 minutes')
+        self.assertIn('letter-spacing:10px;color:#ffffff;padding-left:10px">482913</div>', html)
+        self.assertIn('Your code: 482913', text)
+
+    def test_user_text_is_escaped_in_html(self):
+        from .emailing import render_focusforge_email
+        html, _ = render_focusforge_email(self.user, 'S', 'H', 'Goal “<script>x</script>” is complete.')
+        self.assertNotIn('<script>x', html)

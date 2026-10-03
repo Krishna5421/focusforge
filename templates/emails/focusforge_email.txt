@@ -1,0 +1,23 @@
+{% autoescape off %}Hi {{ name }},
+
+{{ heading }}
+
+{{ message }}
+{% if code %}
+Your code: {{ code }}
+{% if code_note %}{{ code_note }}
+{% endif %}{% endif %}{% if details %}
+{% for label, value in details %}{{ label }}: {{ value }}
+{% endfor %}{% endif %}{% if steps %}
+{% for step in steps %}{{ forloop.counter }}. {{ step.title }}: {{ step.text }}
+   {{ step.url }}
+{% endfor %}{% endif %}{% if action_url %}
+{{ action_label }}: {{ action_url }}
+{% endif %}{% if secondary_url %}
+{{ secondary_text }} {{ secondary_label }}: {{ secondary_url }}
+{% endif %}
+--
+{{ footer_reason }}
+FocusForge: {{ site_url }}{% if settings_url %}
+Account settings: {{ settings_url }}{% endif %}
+{% endautoescape %}
