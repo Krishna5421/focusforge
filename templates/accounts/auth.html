@@ -56,7 +56,7 @@
 
                 <a href="{% url 'accounts:password_reset' %}" class="forgot-link">Forgot password?</a>
 
-                <button type="submit" class="btn-gradient">Login</button>
+                <button type="submit" class="btn-gradient" data-loading-text="Signing in…">Login</button>
             </form>
         </div>
 
@@ -118,7 +118,7 @@
                 </div>
                 {% if register_form.password2.errors %}<p class="field-error">{{ register_form.password2.errors.0 }}</p>{% endif %}
 
-                <button type="submit" class="btn-gradient">Register</button>
+                <button type="submit" class="btn-gradient" data-loading-text="Creating account…">Register</button>
             </form>
         </div>
 
@@ -153,5 +153,6 @@
 
 <script src="{% static 'js/notifications.js' %}"></script>
 <script src="{% static 'js/auth.js' %}"></script>
+    <script src="{% static 'js/form_loading.js' %}"></script>
 </body>
 </html>

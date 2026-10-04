@@ -7,7 +7,7 @@
 <p class="reset-subtitle">We sent a 6-digit code to <strong class="verify-email-address">{{ masked_email }}</strong>. Your current email stays active until you confirm.</p>
 <form method="post" class="reset-form">{% csrf_token %}
   {% include 'accounts/partials/otp_field.html' %}
-  <button type="submit" class="btn-gradient">Confirm new email</button>
+  <button type="submit" class="btn-gradient" data-loading-text="Confirming…">Confirm new email</button>
 </form>
 <form method="post" action="{% url 'accounts:confirm_email_change_resend' %}" class="verify-resend">{% csrf_token %}
   <span>Didn't get it? Check spam, or</span>

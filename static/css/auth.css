@@ -668,3 +668,10 @@ body {
 .verify-resend .link-button { color: #2dd4bf; font-weight: 600; }
 .verify-resend .link-button:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
 .verify-resend .link-button:disabled { color: #64748b; cursor: default; font-variant-numeric: tabular-nums; }
+
+/* Loading state for submit buttons (static/js/form_loading.js) */
+.btn-gradient.is-loading { align-items: center; cursor: progress; display: inline-flex; gap: 10px; justify-content: center; opacity: 0.85; transform: none; }
+.btn-gradient:disabled { cursor: progress; }
+.btn-spinner { animation: btn-spin 0.7s linear infinite; border: 2px solid currentColor; border-radius: 50%; border-right-color: transparent; display: inline-block; flex-shrink: 0; height: 16px; width: 16px; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn-spinner { animation-duration: 1.6s; } }

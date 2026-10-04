@@ -7,7 +7,7 @@
 <p class="reset-subtitle">We sent a 6-digit code to <strong class="verify-email-address">{{ masked_email }}</strong>. It expires in 10 minutes.</p>
 <form method="post" class="reset-form">{% csrf_token %}
   {% include 'accounts/partials/otp_field.html' %}
-  <button type="submit" class="btn-gradient">Verify &amp; continue</button>
+  <button type="submit" class="btn-gradient" data-loading-text="Verifying…">Verify &amp; continue</button>
 </form>
 <form method="post" action="{% url 'accounts:verify_email_resend' %}" class="verify-resend">{% csrf_token %}
   <span>Didn't get it? Check spam, or</span>
