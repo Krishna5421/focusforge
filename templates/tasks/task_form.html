@@ -64,7 +64,7 @@
         value="{% if form.instance.pk %}{% for tag in form.instance.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}"
       />
     </div>
-    <button class="btn btn-primary" type="submit">Save Task</button>
+    <button class="btn btn-primary" type="submit" data-loading-text="Saving…">Save Task</button>
   </form>
 </section>
 {% endblock %}

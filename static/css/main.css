@@ -2014,3 +2014,10 @@ input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webk
 }
 /* Rows are display:flex, which would otherwise override the hidden attribute used by the category filter. */
 .habit-item[hidden], .habit-group-label[hidden], .habit-filter-empty[hidden] { display: none !important; }
+
+/* Loading state for buttons (static/js/form_loading.js) */
+.btn.is-loading { cursor: progress; justify-content: center; opacity: .8; }
+.btn.is-loading:disabled { cursor: progress; }
+.btn-spinner { animation: btn-spin .7s linear infinite; border: 2px solid currentColor; border-radius: 50%; border-right-color: transparent; display: inline-block; flex-shrink: 0; height: 14px; width: 14px; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn-spinner { animation-duration: 1.6s; } }

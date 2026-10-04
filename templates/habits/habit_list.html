@@ -207,16 +207,24 @@ window.addEventListener('scroll', () => {
 
 habitForm.onsubmit = async e => {
   e.preventDefault();
-  const url = editingHabitId ? `/habits/ajax/${editingHabitId}/update/` : '{% url "habits:ajax_habit_create" %}',
-        r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': habitCsrf }, body: new FormData(habitForm) }),
-        data = await r.json();
-  if (!r.ok) {
-    const error = document.getElementById('habitFormError');
-    error.textContent = data.error || 'Could not save habit.';
-    error.hidden = false;
-    return;
-  }
-  window.FocusForge?.redirectWithToast(window.location.href, editingHabitId ? 'Habit updated successfully.' : 'Habit added successfully.');
+  const error = document.getElementById('habitFormError'),
+        showError = message => { error.textContent = message; error.hidden = false; };
+  error.hidden = true;
+  const url = editingHabitId ? `/habits/ajax/${editingHabitId}/update/` : '{% url "habits:ajax_habit_create" %}';
+  await window.FocusForge.withLoading(document.getElementById('saveHabitButton'), editingHabitId ? 'Saving…' : 'Creating…', async () => {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': habitCsrf }, body: new FormData(habitForm) }),
+            data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        showError(data.error || 'Could not save habit.');
+        return;
+      }
+      window.FocusForge?.redirectWithToast(window.location.href, editingHabitId ? 'Habit updated successfully.' : 'Habit added successfully.');
+      return window.FocusForge.KEEP_LOADING;
+    } catch (err) {
+      showError('Could not reach the server. Check your connection and try again.');
+    }
+  });
 };
 
 function closeDeleteHabitModal() {
@@ -297,16 +305,17 @@ document.querySelectorAll('[data-habit-filter]').forEach(chip => chip.addEventLi
   if (empty) empty.hidden = visible > 0 || !habitsList.querySelector('.habit-item');
 }));
 
-document.getElementById('confirmDeleteHabit').onclick = async () => {
+document.getElementById('confirmDeleteHabit').onclick = event => window.FocusForge.withLoading(event.currentTarget, 'Deleting…', async () => {
   if (!deleteHabitId) return;
-  const r = await fetch(`/habits/ajax/${deleteHabitId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': habitCsrf } });
-  if (r.ok) {
+  try {
+    const r = await fetch(`/habits/ajax/${deleteHabitId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': habitCsrf } });
+    if (!r.ok) throw new Error('delete failed');
     deleteHabitRow.remove();
     closeDeleteHabitModal();
     window.FocusForge?.redirectWithToast(window.location.href, 'Habit deleted successfully.');
-  } else {
+  } catch (error) {
     window.FocusForge?.toast('Unable to delete the habit. Please try again.', 'error');
   }
-};
+});
 </script>
 {% endblock %}

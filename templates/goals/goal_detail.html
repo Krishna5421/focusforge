@@ -12,7 +12,7 @@
     action="{% url 'goals:goal_delete' goal.pk %}"
     onsubmit="return confirm('Delete this goal?');"
   >
-    {% csrf_token %}<button class="btn btn-danger-ghost">Delete Goal</button>
+    {% csrf_token %}<button class="btn btn-danger-ghost" type="submit" data-loading-text="Deleting…">Delete Goal</button>
   </form>
 </div>
 <div class="goal-card">
@@ -60,7 +60,7 @@
         type="number"
         value="0"
         min="0"
-      /><button class="btn btn-primary">Add Milestone</button>
+      /><button class="btn btn-primary" type="submit" data-loading-text="Adding…">Add Milestone</button>
     </form>
   </div>
 </div>

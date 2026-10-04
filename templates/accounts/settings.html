@@ -61,7 +61,7 @@
         </label>
         {% if request.user.profile.profile_picture %}
           {# Belongs to #removePhotoForm (below), so pressing Enter in this form never triggers it. #}
-          <button class="btn btn-danger-ghost btn-sm remove-photo-button" type="submit" form="removePhotoForm">
+          <button class="btn btn-danger-ghost btn-sm remove-photo-button" type="submit" form="removePhotoForm" data-loading-text="Removing…">
             <i class="bi bi-trash"></i> Remove photo
           </button>
         {% endif %}
@@ -122,7 +122,7 @@
 
     <div class="profile-edit-actions">
       <a class="btn btn-secondary" href="{% url 'accounts:profile' %}">Cancel</a>
-      <button class="btn btn-primary" type="submit">Save changes</button>
+      <button class="btn btn-primary" type="submit" data-loading-text="Saving…">Save changes</button>
     </div>
   </form>
   <form id="removePhotoForm" method="post" action="{% url 'accounts:remove_profile_photo' %}" hidden>{% csrf_token %}</form>
@@ -154,7 +154,7 @@
       </div>
       <p class="form-message">At least 8 characters, not too common, and not entirely numbers. You'll stay signed in on this device.</p>
       <div class="profile-edit-actions">
-        <button class="btn btn-primary" type="submit">Change password</button>
+        <button class="btn btn-primary" type="submit" data-loading-text="Updating…">Change password</button>
       </div>
     </form>
   </section>

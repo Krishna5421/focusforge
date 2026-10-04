@@ -233,8 +233,20 @@
     render();
   }));
 
-  form.addEventListener('submit', async event => {
+  // Shows a spinner on a timer button while saving; render() then sets the right label and state again.
+  const whileSaving = async (button, text, action) => {
+    if (!window.FocusForge.startLoading(button, text)) return;
+    try { await action(); } finally { window.FocusForge.stopLoading(button); render(); }
+  };
+
+  form.addEventListener('submit', event => {
     event.preventDefault();
+    if (state === 'running' && !(mode === 'focus' && sessionId && focusedSeconds() > 0)) return;
+    const saving = mode === 'focus' && sessionId && focusedSeconds() > 0 && state !== 'paused';
+    whileSaving(startButton, saving ? 'Saving…' : 'Starting…', () => handleStart());
+  });
+
+  async function handleStart() {
     if (mode === 'focus' && sessionId && focusedSeconds() > 0 && state !== 'paused') {
       if (timer) { window.clearInterval(timer); timer = null; }
       try {
@@ -262,13 +274,15 @@
       startClock();
       window.FocusForgeTimer?.refresh();
     } catch (error) { window.FocusForge?.apiError(error, 'Unable to start the focus session.'); }
-  });
+  }
 
-  pauseButton.addEventListener('click', async () => {
+  pauseButton.addEventListener('click', () => {
     if (state !== 'running') return;
     window.clearInterval(timer); timer = null;
-    try { await saveSession('PAUSED'); state = 'paused'; render(); window.FocusForgeTimer?.refresh(); }
-    catch (error) { window.FocusForge?.apiError(error, 'Unable to pause the focus session.'); startClock(); }
+    whileSaving(pauseButton, 'Pausing…', async () => {
+      try { await saveSession('PAUSED'); state = 'paused'; render(); window.FocusForgeTimer?.refresh(); }
+      catch (error) { window.FocusForge?.apiError(error, 'Unable to pause the focus session.'); startClock(); }
+    });
   });
 
   resetButton.addEventListener('click', async () => {

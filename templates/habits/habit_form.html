@@ -41,7 +41,7 @@
       {{ form.target_days.errors }}
       <small class="habit-target-help">Weekly: selected days count toward consistency. None selected means once per week. Daily habits count all 7 days.</small>
     </div>
-    <button class="btn btn-primary" type="submit">{% if habit %}Save Changes{% else %}Create Habit{% endif %}</button>
+    <button class="btn btn-primary" type="submit" data-loading-text="Saving…">{% if habit %}Save Changes{% else %}Create Habit{% endif %}</button>
   </form>
 </section>
 {% endblock %}

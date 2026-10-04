@@ -167,7 +167,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn btn-secondary" type="button" data-close>Cancel</button>
-        <button class="btn btn-primary" type="submit">Set Up Timer</button>
+        <button class="btn btn-primary" type="submit" id="setupStudyButton">Set Up Timer</button>
       </div>
     </form>
   </div>
@@ -300,21 +300,24 @@
   document.getElementById('setupForm').onsubmit = async e => {
     e.preventDefault();
     const selectedFile = file.files[0];
-    try {
-      const payload = await post('{% url "study:active_session_setup" %}', new FormData(e.target));
+    await window.FocusForge.withLoading(document.getElementById('setupStudyButton'), 'Setting up…', async () => {
       try {
-        if (selectedFile) await saveLocalStudyFile(payload.id, selectedFile);
-        else await deleteLocalStudyFile(payload.id);
-      } catch (storageError) {
-        window.FocusForge?.toast('The session was saved, but this browser could not keep the local file.', 'error');
+        const payload = await post('{% url "study:active_session_setup" %}', new FormData(e.target));
+        try {
+          if (selectedFile) await saveLocalStudyFile(payload.id, selectedFile);
+          else await deleteLocalStudyFile(payload.id);
+        } catch (storageError) {
+          window.FocusForge?.toast('The session was saved, but this browser could not keep the local file.', 'error');
+        }
+        e.target.reset();
+        if (localFileUrl) URL.revokeObjectURL(localFileUrl);
+        location.reload();
+        return window.FocusForge.KEEP_LOADING;
+      } catch (err) {
+        document.getElementById('setupMessage').textContent = err.message;
+        window.FocusForge?.apiError(err, 'Unable to start the study session.');
       }
-      e.target.reset();
-      if (localFileUrl) URL.revokeObjectURL(localFileUrl);
-      location.reload();
-    } catch (err) {
-      document.getElementById('setupMessage').textContent = err.message;
-      window.FocusForge?.apiError(err, 'Unable to start the study session.');
-    }
+    });
   };
 
   document.querySelectorAll('.study-minutes').forEach(x => {
@@ -371,11 +374,15 @@
     if (confirm('Discard this study session?'))
       post('{% url "study:active_session_save" %}', new URLSearchParams({ discard: 1 })).then(() => location.reload());
   };
-  document.getElementById('saveStudyButton').onclick = () => {
-    post('{% url "study:active_session_save" %}', new URLSearchParams())
-      .then(() => location.reload())
-      .catch(e => document.getElementById('completedTime').textContent = e.message);
-  };
+  document.getElementById('saveStudyButton').onclick = event => window.FocusForge.withLoading(event.currentTarget, 'Saving…', async () => {
+    try {
+      await post('{% url "study:active_session_save" %}', new URLSearchParams());
+      location.reload();
+      return window.FocusForge.KEEP_LOADING;
+    } catch (e) {
+      document.getElementById('completedTime').textContent = e.message;
+    }
+  });
 
   display();
   if (running) timer = setInterval(tick, 1000);

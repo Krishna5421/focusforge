@@ -173,16 +173,24 @@ goalModal.onclick = e => { if (e.target === goalModal) closeGoalModal(); };
 
 goalForm.onsubmit = async e => {
   e.preventDefault();
-  const url = editingGoalId ? `/goals/ajax/${editingGoalId}/update/` : '{% url "goals:ajax_goal_create" %}',
-        r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': goalCsrf }, body: new FormData(goalForm) }),
-        data = await r.json();
-  if (!r.ok) {
-    const error = document.getElementById('goalFormError');
-    error.textContent = data.error || 'Could not save goal.';
-    error.hidden = false;
-    return;
-  }
-  window.FocusForge?.redirectWithToast(window.location.href, editingGoalId ? 'Goal updated successfully.' : 'Goal added successfully.');
+  const error = document.getElementById('goalFormError'),
+        showError = message => { error.textContent = message; error.hidden = false; };
+  error.hidden = true;
+  const url = editingGoalId ? `/goals/ajax/${editingGoalId}/update/` : '{% url "goals:ajax_goal_create" %}';
+  await window.FocusForge.withLoading(document.getElementById('saveGoalButton'), editingGoalId ? 'Saving…' : 'Creating…', async () => {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': goalCsrf }, body: new FormData(goalForm) }),
+            data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        showError(data.error || 'Could not save goal.');
+        return;
+      }
+      window.FocusForge?.redirectWithToast(window.location.href, editingGoalId ? 'Goal updated successfully.' : 'Goal added successfully.');
+      return window.FocusForge.KEEP_LOADING;
+    } catch (err) {
+      showError('Could not reach the server. Check your connection and try again.');
+    }
+  });
 };
 
 function closeDeleteGoalModal() {
@@ -237,9 +245,14 @@ goalsList.addEventListener('click', async e => {
   window.FocusForge?.refreshShell();
 });
 
-document.getElementById('confirmDeleteGoal').onclick = async () => {
+document.getElementById('confirmDeleteGoal').onclick = event => window.FocusForge.withLoading(event.currentTarget, 'Deleting…', async () => {
   if (!deleteGoalId) return;
-  const r = await fetch(`/goals/ajax/${deleteGoalId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': goalCsrf } });
+  let r;
+  try {
+    r = await fetch(`/goals/ajax/${deleteGoalId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': goalCsrf } });
+  } catch (error) {
+    r = { ok: false };
+  }
   if (r.ok) {
     deleteGoalCard.remove();
     if (!goalsList.querySelector('.goal-card')) {
@@ -250,6 +263,6 @@ document.getElementById('confirmDeleteGoal').onclick = async () => {
   } else {
     window.FocusForge?.toast('Unable to delete the goal. Please try again.', 'error');
   }
-};
+});
 </script>
 {% endblock %}

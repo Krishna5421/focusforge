@@ -94,6 +94,13 @@
     button.setAttribute('aria-expanded', String(willOpen));
   });
   document.addEventListener('click', event => { if (!event.target.closest('.export-dropdown')) close(); });
+  // Building the PDF takes a few seconds and downloads give no "done" signal, so show progress briefly.
+  menu?.querySelectorAll('a').forEach(link => link.addEventListener('click', event => {
+    if (button.classList.contains('is-loading')) { event.preventDefault(); return; }
+    close();
+    window.FocusForge?.startLoading(button, 'Preparing PDF…');
+    window.setTimeout(() => window.FocusForge?.stopLoading(button), 4000);
+  }));
   document.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
 })();
 </script>

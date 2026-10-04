@@ -243,20 +243,20 @@ taskForm.onsubmit = async e => {
     return;
   }
   const url = editingId ? `/tasks/ajax/${editingId}/update/` : '{% url "tasks:ajax_task_create" %}';
-  saveButton.disabled = true;
-  try {
-    const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': taskCsrf }, body: new FormData(taskForm) }),
-          data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      showError(data.error || 'Could not save the task. Please refresh the page and try again.');
-      return;
+  await window.FocusForge.withLoading(saveButton, editingId ? 'Saving…' : 'Creating…', async () => {
+    try {
+      const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': taskCsrf }, body: new FormData(taskForm) }),
+            data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        showError(data.error || 'Could not save the task. Please refresh the page and try again.');
+        return;
+      }
+      window.FocusForge?.redirectWithToast(window.location.href, editingId ? 'Task updated successfully.' : 'Task added successfully.');
+      return window.FocusForge.KEEP_LOADING;
+    } catch (err) {
+      showError('Could not reach the server. Check your connection and try again.');
     }
-    window.FocusForge?.redirectWithToast(window.location.href, editingId ? 'Task updated successfully.' : 'Task added successfully.');
-  } catch (err) {
-    showError('Could not reach the server. Check your connection and try again.');
-  } finally {
-    saveButton.disabled = false;
-  }
+  });
 };
 
 async function post(url, data) {
@@ -293,18 +293,19 @@ taskTable.addEventListener('click', async e => {
   }
 });
 
-document.getElementById('confirmDelete').onclick = async () => {
-  if (deleteMode === 'bulk') { await bulk('delete'); return; }
+document.getElementById('confirmDelete').onclick = event => window.FocusForge.withLoading(event.currentTarget, 'Deleting…', async () => {
+  if (deleteMode === 'bulk') return bulk('delete');
   if (!deleteId) return;
-  const r = await post(`/tasks/ajax/${deleteId}/delete/`, new FormData());
-  if (r.ok) {
+  try {
+    const r = await post(`/tasks/ajax/${deleteId}/delete/`, new FormData());
+    if (!r.ok) throw new Error('delete failed');
     deleteRow.remove();
     closeDeleteModal();
     window.FocusForge?.toast('Task deleted successfully.', 'success');
-  } else {
+  } catch (error) {
     window.FocusForge?.toast('Unable to delete the task. Please try again.', 'error');
   }
-};
+});
 
 function updateBulk() {
   document.getElementById('selectedCount').textContent = selected.size;
@@ -335,16 +336,18 @@ async function bulk(action) {
   const data = new FormData();
   data.append('action', action);
   selected.forEach(id => data.append('task_ids[]', id));
-  const response = await post('{% url "tasks:ajax_bulk_tasks" %}', data);
-  if (response.ok) {
+  try {
+    const response = await post('{% url "tasks:ajax_bulk_tasks" %}', data);
+    if (!response.ok) throw new Error('bulk failed');
     closeDeleteModal();
     window.FocusForge?.redirectWithToast(window.location.href, action === 'delete' ? 'Tasks deleted successfully.' : 'Tasks updated successfully.');
-  } else {
+    return window.FocusForge.KEEP_LOADING;
+  } catch (error) {
     window.FocusForge?.toast('Unable to update the selected tasks. Please try again.', 'error');
   }
 }
 
-document.getElementById('bulkComplete').onclick = () => bulk('complete');
+document.getElementById('bulkComplete').onclick = event => window.FocusForge.withLoading(event.currentTarget, 'Completing…', () => bulk('complete'));
 document.getElementById('bulkDelete').onclick = () => openDeleteModal(
   `Delete ${selected.size} task${selected.size === 1 ? '' : 's'}?`,
   'This action cannot be undone.',
