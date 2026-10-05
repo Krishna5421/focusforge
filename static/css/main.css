@@ -2021,3 +2021,19 @@ input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webk
 .btn-spinner { animation: btn-spin .7s linear infinite; border: 2px solid currentColor; border-radius: 50%; border-right-color: transparent; display: inline-block; flex-shrink: 0; height: 14px; width: 14px; }
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .btn-spinner { animation-duration: 1.6s; } }
+
+/* Edit profile: danger zone and delete account dialog */
+.danger-zone-card { border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); margin-top: 20px; }
+.danger-zone-card .card-title { color: var(--danger); }
+.danger-zone-row { align-items: center; display: flex; gap: 16px; justify-content: space-between; padding: 20px 24px; }
+.danger-zone-row strong { color: var(--text-0); display: block; font-size: 14px; }
+.danger-zone-row p { color: var(--text-2); font-size: 12px; margin-top: 3px; }
+.delete-account-warning { color: var(--text-1); font-size: 13px; line-height: 1.55; margin-bottom: 16px; }
+.delete-account-body { padding: 22px; }
+.btn-danger-solid { background: var(--danger); border: 1px solid var(--danger); color: #fff; }
+.btn-danger-solid:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-danger-solid:disabled:not(.is-loading) { cursor: not-allowed; opacity: .45; }
+@media (max-width: 640px) {
+  .danger-zone-row { align-items: stretch; flex-direction: column; }
+  .danger-zone-row .btn { justify-content: center; }
+}

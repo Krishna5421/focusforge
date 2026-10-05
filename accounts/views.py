@@ -18,7 +18,7 @@ from goals.models import Goal, Milestone
 from .forms import (BIO_MAX_LENGTH, RegisterForm, StyledLoginForm, ProfileForm, UserUpdateForm,
                     PasswordResetRequestForm, PasswordResetOTPForm, PasswordResetSetForm)
 from .models import PasswordResetOTP, PendingEmailChange
-from . import email_change, verification
+from . import deletion, email_change, verification
 from .streaks import refresh_activity_streak
 
 logger = logging.getLogger(__name__)
@@ -320,7 +320,7 @@ def profile_view(request):
     })
 
 
-def render_settings(request, user_form, profile_form, password_form):
+def render_settings(request, user_form, profile_form, password_form, delete_error=''):
     # Django autofocuses the current-password field, which would scroll the page down to it on every visit.
     password_form.fields['old_password'].widget.attrs.pop('autofocus', None)
     return render(request, 'accounts/settings.html', {
@@ -329,6 +329,9 @@ def render_settings(request, user_form, profile_form, password_form):
         'password_form': password_form,
         'pending_email_change': email_change.pending_change(request.user),
         'bio_max_length': BIO_MAX_LENGTH,
+        'can_delete_account': deletion.can_self_delete(request.user),
+        'delete_error': delete_error,
+        'delete_confirm_word': deletion.CONFIRM_WORD,
     })
 
 
@@ -376,6 +379,35 @@ def change_password(request):
     messages.error(request, 'Your password was not changed. Please fix the errors below.')
     return render_settings(request, UserUpdateForm(instance=request.user),
                            ProfileForm(instance=request.user.profile), password_form)
+
+
+@login_required
+def delete_account(request):
+    if request.method != 'POST':
+        return redirect('accounts:settings')
+    user = request.user
+
+    def show_error(message):
+        return render_settings(request, UserUpdateForm(instance=user), ProfileForm(instance=user.profile),
+                               PasswordChangeForm(user), delete_error=message)
+
+    if not deletion.can_self_delete(user):
+        # Admins don't get the danger-zone dialog, so report this as a page message instead.
+        messages.error(request, 'Admin accounts cannot be deleted from here. Ask another admin to remove this account.')
+        return redirect('accounts:settings')
+    if request.POST.get('confirm', '').strip() != deletion.CONFIRM_WORD:
+        return show_error(f'Type {deletion.CONFIRM_WORD} in capital letters to confirm.')
+    if not user.check_password(request.POST.get('password', '')):
+        return show_error('Incorrect password. Your account was not deleted.')
+
+    try:
+        deletion.delete_account(user)
+    except Exception:
+        logger.exception('Account deletion failed for user %s', user.pk)
+        return show_error('We could not delete your account right now. Nothing was removed. Please try again.')
+    logout(request)
+    messages.success(request, 'Your account has been deleted.')
+    return redirect('accounts:login')
 
 
 @login_required

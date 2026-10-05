@@ -158,6 +158,51 @@
       </div>
     </form>
   </section>
+
+  {% if can_delete_account %}
+    <section class="card profile-edit-card danger-zone-card" id="danger-zone">
+      <div class="card-head">
+        <h2 class="card-title">Danger zone</h2>
+      </div>
+      <div class="danger-zone-row">
+        <div>
+          <strong>Delete account</strong>
+          <p>Permanently delete your account and all your data.</p>
+        </div>
+        <button class="btn btn-danger-ghost" type="button" id="openDeleteAccount">
+          <i class="bi bi-trash"></i> Delete my account
+        </button>
+      </div>
+    </section>
+
+    <div class="modal-overlay{% if delete_error %} show{% endif %}" id="deleteAccountModal" aria-hidden="{% if delete_error %}false{% else %}true{% endif %}">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteAccountTitle">
+        <div class="modal-head">
+          <h2 class="modal-title" id="deleteAccountTitle">Delete your account?</h2>
+          <button class="icon-btn" type="button" id="closeDeleteAccount" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" action="{% url 'accounts:delete_account' %}" id="deleteAccountForm">
+          {% csrf_token %}
+          <div class="modal-body profile-edit-form delete-account-body">
+            <p class="delete-account-warning">Your account and all of your data will be permanently deleted. This cannot be undone.</p>
+            {% if delete_error %}<p class="field-error" role="alert">{{ delete_error }}</p>{% endif %}
+            <div class="form-group">
+              <label class="form-label" for="deletePassword">Enter your password to confirm</label>
+              <input type="password" id="deletePassword" name="password" autocomplete="current-password" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="deleteConfirm">Type <strong>{{ delete_confirm_word }}</strong> to confirm</label>
+              <input type="text" id="deleteConfirm" name="confirm" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-secondary" type="button" id="cancelDeleteAccount">Cancel</button>
+            <button class="btn btn-danger-solid" type="submit" id="confirmDeleteAccount" data-loading-text="Deleting…" disabled>Delete forever</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}
 
@@ -198,6 +243,38 @@
     image.hidden = false;
     fallback.hidden = true;
   });
+
+  // Delete account: the button unlocks once the exact word is typed. The password is not checked here,
+  // because browsers hide auto-filled passwords from scripts; it is `required` and verified by the server.
+  const deleteModal = document.getElementById('deleteAccountModal');
+  if (deleteModal) {
+    const password = document.getElementById('deletePassword');
+    const confirmWord = document.getElementById('deleteConfirm');
+    const confirmButton = document.getElementById('confirmDeleteAccount');
+    const updateConfirm = () => {
+      confirmButton.disabled = confirmWord.value.trim() !== '{{ delete_confirm_word }}';
+    };
+    const openModal = () => {
+      deleteModal.classList.add('show');
+      deleteModal.setAttribute('aria-hidden', 'false');
+      password.focus();
+    };
+    const closeModal = () => {
+      if (confirmButton.classList.contains('is-loading')) return;
+      deleteModal.classList.remove('show');
+      deleteModal.setAttribute('aria-hidden', 'true');
+      password.value = '';
+      confirmWord.value = '';
+      updateConfirm();
+    };
+    ['input', 'change', 'keyup'].forEach(type => confirmWord.addEventListener(type, updateConfirm));
+    document.getElementById('openDeleteAccount').addEventListener('click', openModal);
+    document.getElementById('closeDeleteAccount').addEventListener('click', closeModal);
+    document.getElementById('cancelDeleteAccount').addEventListener('click', closeModal);
+    deleteModal.addEventListener('click', event => { if (event.target === deleteModal) closeModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && deleteModal.classList.contains('show')) closeModal(); });
+    if (deleteModal.classList.contains('show')) password.focus();
+  }
 
   const bio = document.getElementById('{{ profile_form.bio.id_for_label }}');
   const bioCount = document.getElementById('bioCount');

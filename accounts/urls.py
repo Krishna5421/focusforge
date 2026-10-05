@@ -14,6 +14,7 @@ urlpatterns = [
     path('settings/', views.settings_view, name='settings'),
     path('settings/password/', views.change_password, name='change_password'),
     path('settings/remove-photo/', views.remove_profile_photo, name='remove_profile_photo'),
+    path('settings/delete-account/', views.delete_account, name='delete_account'),
     path('settings/confirm-email/', views.confirm_email_change, name='confirm_email_change'),
     path('settings/confirm-email/resend/', views.confirm_email_change_resend, name='confirm_email_change_resend'),
     path('settings/confirm-email/cancel/', views.cancel_email_change, name='cancel_email_change'),
