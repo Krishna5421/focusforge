@@ -64,7 +64,7 @@ def update_streak_on_log(sender, instance, **kwargs):
 @receiver(post_delete, sender=HabitLog)
 def update_streak_on_log_delete(sender, instance, origin=None, **kwargs):
     # Deleting a whole account removes the profile too, so there is no streak or XP left to adjust.
-    if isinstance(origin, User):
+    if isinstance(origin, User) or getattr(origin, 'model', None) is User:  # one user, or a bulk user delete
         return
     recalculate_streak(instance.habit)
     if instance.xp_awarded:

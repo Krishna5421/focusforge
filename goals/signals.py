@@ -57,6 +57,6 @@ def update_goal_on_milestone_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=Milestone)
 def update_goal_on_milestone_delete(sender, instance, origin=None, **kwargs):
     # Skip when the whole account is being deleted; the goal is going away too.
-    if isinstance(origin, User):
+    if isinstance(origin, User) or getattr(origin, 'model', None) is User:  # one user, or a bulk user delete
         return
     recalculate_goal_progress(instance.goal)

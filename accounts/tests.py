@@ -607,3 +607,52 @@ class DeleteAccountTests(TestCase):
         response = self.client.get(reverse('accounts:delete_account'))
         self.assertRedirects(response, reverse('accounts:settings'))
         self.assertTrue(User.objects.filter(username='leaver').exists())
+
+
+class AdminPrivacyTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser('boss', 'boss@example.com', 'Boss-pass-123')
+        self.member = User.objects.create_user('member', email='member@example.com', password='x')
+        self.member.profile.bio = 'My secret bio'
+        self.member.profile.save()
+        Task.objects.create(user=self.member, title='Secret task title', description='Private details')
+        Habit.objects.create(user=self.member, name='Secret habit')
+        from assistant.models import AIQueryLog
+        AIQueryLog.objects.create(user=self.member, query='My private question', response='answer')
+        self.client.login(username='boss', password='Boss-pass-123')
+
+    def test_personal_content_models_are_not_in_admin(self):
+        index = self.client.get('/admin/').content.decode()
+        for hidden in ('/admin/tasks/', '/admin/habits/', '/admin/goals/', '/admin/study/',
+                       '/admin/assistant/', '/admin/notifications/', '/admin/pomodoro/'):
+            self.assertNotIn(hidden, index)
+        self.assertIn('/admin/auth/user/', index)
+        self.assertIn('/admin/achievements/achievement/', index)
+        self.assertEqual(self.client.get('/admin/tasks/task/').status_code, 404)
+        self.assertEqual(self.client.get('/admin/assistant/aiquerylog/').status_code, 404)
+
+    def test_user_page_shows_counts_but_no_content(self):
+        page = self.client.get(f'/admin/auth/user/{self.member.pk}/change/')
+        self.assertContains(page, 'Tasks: <strong>1</strong>', html=False)
+        self.assertContains(page, 'AI questions: <strong>1</strong>', html=False)
+        for secret in ('Secret task title', 'Private details', 'Secret habit', 'My private question'):
+            self.assertNotContains(page, secret)
+
+    def test_profile_page_hides_bio_and_allows_verified_toggle(self):
+        page = self.client.get(f'/admin/accounts/profile/{self.member.profile.pk}/change/')
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, 'My secret bio')
+        self.assertNotContains(page, 'profile_picture')
+        self.client.post(f'/admin/accounts/profile/{self.member.profile.pk}/change/', {'email_verified': 'on'})
+        self.member.profile.refresh_from_db()
+        self.assertTrue(self.member.profile.email_verified)
+        self.assertEqual(self.member.profile.bio, 'My secret bio')
+
+    def test_admin_bulk_delete_users_with_habit_history(self):
+        habit = Habit.objects.get(name='Secret habit')
+        HabitLog.objects.create(habit=habit, date=timezone.localdate(), completed=True)
+        response = self.client.post('/admin/auth/user/', {
+            'action': 'delete_selected', '_selected_action': [self.member.pk], 'post': 'yes',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(username='member').exists())
