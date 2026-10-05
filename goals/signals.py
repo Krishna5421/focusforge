@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
@@ -54,5 +55,8 @@ def update_goal_on_milestone_save(sender, instance, **kwargs):
 
 
 @receiver(post_delete, sender=Milestone)
-def update_goal_on_milestone_delete(sender, instance, **kwargs):
+def update_goal_on_milestone_delete(sender, instance, origin=None, **kwargs):
+    # Skip when the whole account is being deleted; the goal is going away too.
+    if isinstance(origin, User):
+        return
     recalculate_goal_progress(instance.goal)

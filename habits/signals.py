@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from datetime import timedelta
@@ -61,7 +62,10 @@ def update_streak_on_log(sender, instance, **kwargs):
 
 
 @receiver(post_delete, sender=HabitLog)
-def update_streak_on_log_delete(sender, instance, **kwargs):
+def update_streak_on_log_delete(sender, instance, origin=None, **kwargs):
+    # Deleting a whole account removes the profile too, so there is no streak or XP left to adjust.
+    if isinstance(origin, User):
+        return
     recalculate_streak(instance.habit)
     if instance.xp_awarded:
         remove_xp(instance.habit.user, 'HABIT_CHECKIN')
