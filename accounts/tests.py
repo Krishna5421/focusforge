@@ -545,3 +545,65 @@ class EditProfileTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.user.profile.refresh_from_db()
         self.assertEqual(self.user.profile.bio, '')
+
+
+class DeleteAccountTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='leaver', email='leaver@example.com', password='Keep-me-123')
+        self.client.login(username='leaver', password='Keep-me-123')
+
+    def delete(self, password='Keep-me-123', confirm='DELETE'):
+        return self.client.post(reverse('accounts:delete_account'), {'password': password, 'confirm': confirm})
+
+    def test_deletes_user_and_all_their_data(self):
+        from goals.models import Goal
+        from assistant.models import AIQueryLog
+        other = User.objects.create_user(username='stayer', password='x')
+        Task.objects.create(user=self.user, title='Mine')
+        Task.objects.create(user=other, title='Not mine')
+        habit = Habit.objects.create(user=self.user, name='Read')
+        HabitLog.objects.create(habit=habit, date=timezone.localdate(), completed=True)
+        Goal.objects.create(user=self.user, title='G', deadline=timezone.localdate())
+        AIQueryLog.objects.create(user=self.user, query='q', response='a')
+
+        with patch('notifications.emailing.send_focusforge_email_async') as farewell:
+            response = self.delete()
+
+        self.assertRedirects(response, reverse('accounts:login'), fetch_redirect_response=False)
+        self.assertFalse(User.objects.filter(username='leaver').exists())
+        self.assertFalse(Task.objects.filter(title='Mine').exists())
+        self.assertFalse(HabitLog.objects.exists())
+        self.assertFalse(AIQueryLog.objects.exists())
+        self.assertTrue(Task.objects.filter(title='Not mine').exists())
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(farewell.call_args.args[0].email, 'leaver@example.com')
+
+    def test_wrong_password_or_missing_confirm_word_keeps_account(self):
+        for password, confirm, message in (('nope', 'DELETE', 'Incorrect password'),
+                                           ('Keep-me-123', 'delete', 'Type DELETE'),
+                                           ('Keep-me-123', '', 'Type DELETE')):
+            response = self.delete(password, confirm)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, message)
+            self.assertContains(response, 'id="deleteAccountModal" aria-hidden="false"')
+        self.assertTrue(User.objects.filter(username='leaver').exists())
+
+    def test_uploaded_files_are_removed_after_commit(self):
+        from accounts.models import Profile
+        Profile.objects.filter(user=self.user).update(profile_picture='profiles/me.png')
+        with patch('accounts.deletion.remove_files') as remove, self.captureOnCommitCallbacks(execute=True):
+            self.delete()
+        self.assertEqual([f.name for f in remove.call_args.args[0]], ['profiles/me.png'])
+
+    def test_staff_cannot_self_delete(self):
+        User.objects.filter(pk=self.user.pk).update(is_staff=True)
+        response = self.client.post(reverse('accounts:delete_account'),
+                                    {'password': 'Keep-me-123', 'confirm': 'DELETE'}, follow=True)
+        self.assertContains(response, 'Admin accounts cannot be deleted from here')
+        self.assertTrue(User.objects.filter(username='leaver').exists())
+        self.assertNotContains(self.client.get(reverse('accounts:settings')), 'Danger zone')
+
+    def test_get_does_not_delete(self):
+        response = self.client.get(reverse('accounts:delete_account'))
+        self.assertRedirects(response, reverse('accounts:settings'))
+        self.assertTrue(User.objects.filter(username='leaver').exists())
