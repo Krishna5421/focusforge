@@ -22,6 +22,13 @@ def percent_change(current, previous):
     return round(((current - previous) / previous) * 100)
 
 
+def home(request):
+    # Visitors get the landing page; signed-in users go straight to their dashboard.
+    if request.user.is_authenticated:
+        return dashboard(request)
+    return render(request, 'core/landing.html')
+
+
 @login_required
 def dashboard(request):
     user = request.user

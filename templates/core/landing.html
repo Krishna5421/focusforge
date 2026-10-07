@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FocusForge — Your productivity, forged into one system</title>
+<meta name="description" content="Tasks with due times, habits, goals, Pomodoro focus, study sessions and an AI coach in one productivity workspace.">
+<meta property="og:title" content="FocusForge — Your productivity, forged into one system">
+<meta property="og:description" content="Plan, focus and improve in one place.">
+<link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script>
+  // Saved theme first (same key as the app), so the page never flashes the wrong theme.
+  (function () {
+    var t = 'dark';
+    try { t = localStorage.getItem('ff-theme') || 'dark'; } catch (e) {}
+    document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+  })();
+</script>
+<link rel="stylesheet" href="{% static 'css/landing.css' %}">
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<header class="nav" id="nav">
+  <div class="container nav-inner">
+    <a href="#top" class="brand"><img src="{% static 'images/focusforge-logo.png' %}" alt=""><span>Focus<span class="forge">Forge</span></span></a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features">Features</a><a href="#how">How It Works</a><a href="#analytics">Analytics</a><a href="#ai">AI Coach</a><a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <button class="icon-btn" id="themeBtn" type="button"></button>
+      <a class="login" href="{% url 'accounts:login' %}">Log in</a>
+      <a class="btn btn-primary" href="{% url 'accounts:register' %}">Get Started <span class="arrow">→</span></a>
+      <button class="icon-btn menu-toggle" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#features">Features</a><a href="#how">How It Works</a><a href="#analytics">Analytics</a><a href="#ai">AI Coach</a><a href="#faq">FAQ</a>
+  <a href="{% url 'accounts:login' %}">Log in</a>
+  <a class="btn btn-primary" href="{% url 'accounts:register' %}">Get Started <span class="arrow">→</span></a>
+</div>
+
+<main>
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="orb a"></div><div class="orb b"></div>
+  <div class="container hero-content">
+    <span class="eyebrow rise r1">Your productivity, forged into one system</span>
+    <h1 class="rise r2">Everything you need to <span class="nw"><span class="hl"><span class="accent">focus</span><span class="cyber" aria-hidden="true"><b></b></span></span>,</span> in one place.</h1>
+    <p class="hero-sub rise r3">Tasks with due times, habits, goals, Pomodoro focus and study sessions, with an AI coach that knows your work.</p>
+    <div class="hero-ctas rise r4">
+      <a class="btn btn-primary btn-lg" href="{% url 'accounts:register' %}">Start Focusing <span class="arrow">→</span></a>
+      <a class="btn btn-ghost btn-lg" href="#features">Explore Features</a>
+    </div>
+    <div class="hero-stats rise r5">
+      <div class="hero-stat"><span class="val" data-count="120">120</span><span class="lbl">Minute focus sessions</span></div>
+      <div class="hero-stat"><span class="val" data-count="52">52</span><span class="lbl">Achievements</span></div>
+      <div class="hero-stat"><span class="val" data-count="100">100</span><span class="lbl">XP per level</span></div>
+      <div class="hero-stat"><span class="val">All-in-1</span><span class="lbl">Stop switching apps</span></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="preview" aria-hidden="true">
+      <div class="frame">
+        <div class="frame-bar"><i></i><i></i><i></i><span>focusforge · dashboard (demo)</span></div>
+        <div class="dash">
+          <aside class="dash-side">
+            <div class="dash-item active">▦ Dashboard</div>
+            <div class="dash-item">☑ Tasks <b>5</b></div>
+            <div class="dash-item">↻ Habits <b>2</b></div>
+            <div class="dash-item">☆ Goals <b>3</b></div>
+            <div class="dash-item">🗓 Deadlines <b>4</b></div>
+            <div class="dash-item">◷ Focus</div>
+            <div class="dash-item">📊 Analytics</div>
+            <div class="dash-item">✦ AI Coach</div>
+            <div class="dash-user"><span class="avatar">K</span><span>Krishna<br><small style="color:var(--text-dim)">Level 12</small></span></div>
+          </aside>
+          <div class="dash-main">
+            <div class="dash-col">
+              <div class="d-card">
+                <div class="d-head">Today's tasks <small id="taskCount">2 / 5 done</small></div>
+                <div id="dashTasks">
+                  <div class="task done"><span class="ck"></span><span class="t">Prepare presentation slides</span><span class="prio h"></span><span class="due">3:30 PM</span></div>
+                  <div class="task done"><span class="ck"></span><span class="t">Reply to important emails</span><span class="prio m"></span><span class="due">Today</span></div>
+                  <div class="task"><span class="ck"></span><span class="t">Pay electricity bill</span><span class="prio h"></span><span class="due">5:00 PM</span></div>
+                  <div class="task"><span class="ck"></span><span class="t">Book dentist appointment</span><span class="prio m"></span><span class="due">Tomorrow</span></div>
+                  <div class="task"><span class="ck"></span><span class="t">Clean desk</span><span class="prio l"></span><span class="due">Fri</span></div>
+                </div>
+              </div>
+              <div class="d-card">
+                <div class="d-head">Active goals <small>3 active</small></div>
+                <div class="goal-row"><div>Run a 5K<div class="bar"><i data-w="70" style="background:var(--purple)"></i></div></div><span class="pct mono">70%</span></div>
+                <div class="goal-row"><div>Learn Spanish<div class="bar"><i data-w="40" style="background:var(--blue)"></i></div></div><span class="pct mono">40%</span></div>
+                <div class="goal-row"><div>Read 3 books<div class="bar"><i data-w="33" style="background:var(--green)"></i></div></div><span class="pct mono">33%</span></div>
+              </div>
+            </div>
+            <div class="dash-col side">
+              <div class="d-card focus-mini">
+                <div class="d-head">Focus session <small>Pomodoro</small></div>
+                <div class="ring"><svg width="120" height="120" viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52" stroke-width="7"/><circle class="fg" cx="60" cy="60" r="52" stroke-width="7" stroke-dasharray="326.7" stroke-dashoffset="98"/></svg><span class="time mono" style="font-size:22px">17:30</span></div>
+                <button class="d-btn" type="button" tabindex="-1">Focusing…</button>
+              </div>
+              <div class="xp-card">
+                <div class="row">Level 12 <b class="mono" id="dashXp">1150 XP</b></div>
+                <div class="bar" style="height:6px;margin-top:10px"><i class="xp-fill" id="dashXpBar" data-w="50"></i></div>
+              </div>
+              <div class="d-card">
+                <div class="d-head">Habits today <small>🔥 5-day streak</small></div>
+                <div class="goal-row"><div>Read 20 pages<div class="bar"><i data-w="100" style="background:var(--green)"></i></div></div><span class="pct mono">✓</span></div>
+                <div class="goal-row"><div>Workout<div class="bar"><i data-w="0" style="background:var(--green)"></i></div></div><span class="pct mono">—</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ONE PLATFORM ================= -->
+<section>
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">One platform</span>
+      <h2>Stop switching between <span class="accent">productivity apps.</span></h2>
+      <p>Tasks in one app. Habits in another. A timer somewhere else. FocusForge brings them together.</p>
+    </div>
+    <div class="hub reveal" id="hub" aria-hidden="true">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+        <line x1="50" y1="50" x2="14" y2="18"/><line x1="50" y1="50" x2="50" y2="9"/><line x1="50" y1="50" x2="86" y2="18"/>
+        <line x1="50" y1="50" x2="14" y2="82"/><line x1="50" y1="50" x2="50" y2="91"/><line x1="50" y1="50" x2="86" y2="82"/>
+      </svg>
+      <div class="card node" style="left:14%;top:18%;transition-delay:.0s"><span class="ico" style="background:var(--blue-soft)">✅</span>Tasks</div>
+      <div class="card node" style="left:50%;top:9%;transition-delay:.1s"><span class="ico" style="background:var(--green-soft)">🔁</span>Habits</div>
+      <div class="card node" style="left:86%;top:18%;transition-delay:.2s"><span class="ico" style="background:var(--purple-soft)">🎯</span>Goals</div>
+      <div class="card node" style="left:14%;top:82%;transition-delay:.3s"><span class="ico" style="background:var(--orange-soft)">🍅</span>Focus</div>
+      <div class="card node" style="left:50%;top:91%;transition-delay:.4s"><span class="ico" style="background:var(--blue-soft)">📚</span>Study</div>
+      <div class="card node" style="left:86%;top:82%;transition-delay:.5s"><span class="ico" style="background:var(--purple-soft)">✦</span>AI Coach</div>
+      <div class="card node hub-center" style="transition-delay:.7s"><img src="{% static 'images/focusforge-logo.png' %}" alt="">FocusForge</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Core features</span>
+      <h2>Your entire productivity system, <span class="accent">connected.</span></h2>
+      <p>Every tool works with the others, so a finished task, a habit check-in or a focus session all count toward your streak and XP.</p>
+    </div>
+    <div class="bento stagger" id="bento">
+      <article class="card feat s4" style="--glow:var(--blue-soft)">
+        <span class="ico" style="background:var(--blue-soft)">✅</span>
+        <h3>Tasks with due times</h3>
+        <p>Priorities, categories, tags and an optional due date and time. Get a reminder before it's due.</p>
+        <div class="preview-area">
+          <div class="mini-row"><span class="prio h"></span>Prepare presentation slides<span class="chip" style="background:var(--red-soft);color:var(--red)">Today · 3:30 PM</span></div>
+          <div class="mini-row"><span class="prio m"></span>Pay electricity bill<span class="chip" style="background:var(--orange-soft);color:var(--orange)">Due in 1 hour</span></div>
+          <div class="mini-row"><span class="prio l"></span>Book dentist appointment<span class="chip" style="background:var(--blue-soft);color:var(--blue)">Tomorrow</span></div>
+        </div>
+      </article>
+      <article class="card feat s2" style="--glow:var(--orange-soft)">
+        <span class="ico" style="background:var(--orange-soft)">🍅</span>
+        <h3>Focus timer</h3>
+        <p>Pomodoro sessions that keep running while you move between pages.</p>
+        <div class="preview-area feat-ring">
+          <div class="ring" style="margin:0"><svg width="84" height="84" viewBox="0 0 84 84"><circle class="bg" cx="42" cy="42" r="36" stroke-width="6"/><circle class="fg" cx="42" cy="42" r="36" stroke-width="6" stroke-dasharray="226.2" stroke-dashoffset="56"/></svg><span class="time mono" style="font-size:15px">18:45</span></div>
+          <span style="font-size:13px;color:var(--text-muted)">+15 XP<br>per session</span>
+        </div>
+      </article>
+      <article class="card feat s3" style="--glow:var(--green-soft)">
+        <span class="ico" style="background:var(--green-soft)">🔁</span>
+        <h3>Habit tracking</h3>
+        <p>Daily or on chosen weekdays, with streaks and a 30-day completion rate.</p>
+        <div class="preview-area"><div class="mini-heat" id="miniHeat"></div></div>
+      </article>
+      <article class="card feat s3" style="--glow:var(--purple-soft)">
+        <span class="ico" style="background:var(--purple-soft)">🎯</span>
+        <h3>Goals & milestones</h3>
+        <p>Break long-term goals into milestones and watch progress update itself.</p>
+        <div class="preview-area">
+          <div style="display:flex;align-items:center;gap:14px"><span class="big-pct mono">70%</span><div class="bar" style="flex:1;height:6px;margin:0"><i data-w="70" style="background:var(--purple)"></i></div></div>
+          <div class="mini-ms"><span class="on">Walk 3 km</span><span class="on">Run 1 km</span><span>Run 3 km</span><span>Run 5 km</span></div>
+        </div>
+      </article>
+      <article class="card feat s2" style="--glow:var(--blue-soft)">
+        <span class="ico" style="background:var(--blue-soft)">📚</span>
+        <h3>Study sessions</h3>
+        <p>Timed sessions per subject, with your files attached.</p>
+        <div class="preview-area">
+          <div class="mini-row">Spanish vocabulary<span class="chip mono" style="color:var(--text-dim)">45m</span></div>
+          <div class="mini-row">Online course<span class="chip mono" style="color:var(--text-dim)">30m</span></div>
+        </div>
+      </article>
+      <article class="card feat s4" style="--glow:var(--orange-soft)">
+        <span class="ico" style="background:var(--orange-soft)">📊</span>
+        <h3>Analytics</h3>
+        <p>See your focus time, finished tasks and habit consistency over time.</p>
+        <div class="preview-area mini-chart">
+          <div class="mini-stat"><b class="mono">4h 10m</b><span>focus this week</span><em>↑ 18%</em></div>
+          <svg viewBox="0 0 400 64" preserveAspectRatio="none">
+            <defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--orange)" stop-opacity=".38"/><stop offset="1" stop-color="var(--orange)" stop-opacity="0"/></linearGradient></defs>
+            <path id="miniArea" fill="url(#g1)"/>
+            <path class="draw" id="miniLine" stroke="var(--orange)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOCUS ================= -->
+<section id="focus">
+  <div class="container split">
+    <div class="card timer-card reveal">
+      <div class="ring"><svg width="240" height="240" viewBox="0 0 240 240"><circle class="bg" cx="120" cy="120" r="108" stroke-width="9"/><circle class="fg" id="ringFg" cx="120" cy="120" r="108" stroke-width="9" stroke-dasharray="678.6" stroke-dashoffset="0"/></svg><span class="time mono" id="ringTime">25:00</span></div>
+      <div class="state" id="ringState">Ready to focus</div>
+      <div class="ctrls">
+        <button class="btn btn-primary" id="timerBtn" type="button">▶ Start Session</button>
+        <button class="btn btn-ghost" id="timerReset" type="button">Reset</button>
+      </div>
+    </div>
+    <div class="reveal">
+      <span class="eyebrow">Focus</span>
+      <h2 style="margin-top:16px">Turn time into <span class="accent">focused progress.</span></h2>
+      <p style="color:var(--text-muted);font-size:17px;margin-top:14px">A Pomodoro timer built for real work. Pick 5 to 120 minutes, link it to a task and watch progress add up.</p>
+      <div class="stats stagger" id="focusStats">
+        <div class="card stat"><div><small>Focus this week</small><b class="mono">4h 10m</b></div><span class="trend">↑ 18% vs last week</span></div>
+        <div class="card stat"><div><small>Sessions completed</small><b class="mono" id="sessionCount">11</b></div><span class="trend">+15 XP each</span></div>
+        <div class="card stat"><div><small>Next achievement</small><b style="font-size:17px">🍅 10 Focus Hours</b></div><span class="trend" style="color:var(--orange)">+60 XP</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HABITS + GOALS ================= -->
+<section>
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Consistency</span>
+      <h2>Consistency builds <span class="accent">progress.</span></h2>
+      <p>Check in on your habits, break goals into milestones and watch small actions add up.</p>
+    </div>
+    <div class="two">
+      <div class="card panel reveal">
+        <h3>Habit history</h3>
+        <p class="sub">Daily check-ins over the last 6 months (demo).</p>
+        <div class="heat" id="heat"></div>
+        <div class="legend">Less <i></i><i class="lv1"></i><i class="lv2"></i><i class="lv3"></i><i class="lv4"></i> More</div>
+        <div class="streaks">
+          <div><small>Current streak</small><b class="mono" data-num="5" data-suffix="d">5d</b></div>
+          <div><small>Best streak</small><b class="mono" data-num="12" data-suffix="d">12d</b></div>
+          <div><small>This month</small><b class="mono" data-num="78" data-suffix="%">78%</b></div>
+        </div>
+      </div>
+      <div class="card panel reveal">
+        <div class="goal-head">
+          <div><h3>Run a 5K</h3><small>Due Dec 15 · click a milestone</small></div>
+          <span class="big-pct mono"><span id="goalPct">50</span>%</span>
+        </div>
+        <div class="bar" style="height:8px;margin-top:16px"><i id="goalBar" style="width:50%;background:linear-gradient(90deg,var(--purple),#c4b5fd)"></i></div>
+        <div class="ms-list" id="msList">
+          <button class="ms done" type="button" aria-pressed="true"><span class="ck"></span><span class="t">Walk 3 km without stopping</span><span class="xp mono">+20 XP</span></button>
+          <button class="ms done" type="button" aria-pressed="true"><span class="ck"></span><span class="t">Run 1 km</span><span class="xp mono">+20 XP</span></button>
+          <button class="ms" type="button" aria-pressed="false"><span class="ck"></span><span class="t">Run 3 km</span><span class="xp mono">+20 XP</span></button>
+          <button class="ms" type="button" aria-pressed="false"><span class="ck"></span><span class="t">Run the full 5K</span><span class="xp mono">+20 XP</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ANALYTICS ================= -->
+<section id="analytics">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Analytics</span>
+      <h2>See your productivity, <span class="accent">not just your tasks.</span></h2>
+      <p>Understand where your time goes, what's working and where to focus next.</p>
+    </div>
+    <div class="card analytics-card reveal">
+      <div class="a-head">
+        <div><h3>Productivity overview</h3><p>Focus time and finished tasks (demo data)</p></div>
+        <div class="tabs" id="tabs">
+          <button type="button" data-range="7" aria-pressed="true">7 Days</button>
+          <button type="button" data-range="30" aria-pressed="false">30 Days</button>
+          <button type="button" data-range="90" aria-pressed="false">90 Days</button>
+        </div>
+      </div>
+      <div class="a-grid">
+        <div class="chart">
+          <div class="legend-row"><span style="--c:var(--orange)">Focus (hours)</span><span style="--c:var(--blue)">Tasks done</span></div>
+          <svg id="chart" aria-label="Focus and tasks chart"></svg><div class="tip" id="tip"></div>
+        </div>
+        <div class="metrics stagger" id="metrics">
+          <div class="metric"><small>Focus time</small><b class="mono" style="color:var(--orange)">4h 10m</b><em>↑ 18% vs last week</em></div>
+          <div class="metric"><small>Tasks completed</small><b class="mono" style="color:var(--blue)" data-num="12">12</b><em>↑ 4 vs last week</em></div>
+          <div class="metric"><small>Habit consistency</small><b class="mono" style="color:var(--green)" data-num="78" data-suffix="%">78%</b><em>↑ 6% vs last week</em></div>
+          <div class="metric"><small>Goal progress</small><b class="mono" style="color:var(--purple)" data-num="70" data-suffix="%">70%</b><em>2 milestones this week</em></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GAMIFICATION ================= -->
+<section>
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Progress</span>
+      <h2>Make consistency <span class="accent">rewarding.</span></h2>
+      <p>Earn XP for everything you finish, level up every 100 XP and unlock 52 achievements.</p>
+    </div>
+    <div class="gamify">
+      <div class="card xp-big reveal">
+        <small>Total XP</small>
+        <div class="num mono" id="bigXp">1150</div>
+        <p>Level <b style="color:var(--text)">12</b> · 50 XP to Level 13</p>
+        <div class="bar"><i class="xp-fill" id="bigXpBar" data-w="50"></i></div>
+        <div class="xp-rules">
+          <span>Complete a task <b class="mono">+10</b></span>
+          <span>Habit check-in <b class="mono">+5</b></span>
+          <span>Focus session <b class="mono">+15</b></span>
+          <span>Milestone <b class="mono">+20</b></span>
+          <span>Finish a goal <b class="mono">+50</b></span>
+        </div>
+      </div>
+      <div class="ach-grid stagger" id="achGrid">
+        <div class="card ach"><span class="ico" style="background:var(--green-soft)">✅</span><h3>First Step</h3><p>Complete your first task</p><span class="xp mono">+20 XP</span></div>
+        <div class="card ach"><span class="ico" style="background:var(--red-soft)">🔥</span><h3>7-Day Streak</h3><p>Keep a habit for 7 days</p><span class="xp mono">+50 XP</span></div>
+        <div class="card ach"><span class="ico" style="background:var(--orange-soft)">🍅</span><h3>First Focus Session</h3><p>Reach 1 hour of focus</p><span class="xp mono">+20 XP</span></div>
+        <div class="card ach"><span class="ico" style="background:var(--blue-soft)">📚</span><h3>10 Study Sessions</h3><p>Log 10 study sessions</p><span class="xp mono">+60 XP</span></div>
+        <div class="card ach"><span class="ico" style="background:var(--purple-soft)">🎯</span><h3>Goal Achiever</h3><p>Complete your first goal</p><span class="xp mono">+50 XP</span></div>
+        <div class="card ach"><span class="ico" style="background:var(--orange-soft)">🏆</span><h3>30-Day Streak</h3><p>Keep a habit for 30 days</p><span class="xp mono">+150 XP</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= AI ================= -->
+<section id="ai">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">AI coach</span>
+      <h2>A smarter way to plan <span class="accent">your day.</span></h2>
+      <p>Your coach reads your own tasks, habits and goals and gives you one clear next step, even as a table.</p>
+    </div>
+    <div class="card ai-card reveal">
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <div class="ask">
+        <small>Try asking</small>
+        <div class="prompts" id="prompts">
+          <button type="button" data-q="first">What should I do first?</button>
+          <button type="button" data-q="habits">How are my habits going?</button>
+          <button type="button" data-q="plan">Plan my evening</button>
+          <button type="button" data-q="book">Tell me about Atomic Habits</button>
+        </div>
+        <p>✦ Answers come from your own tasks, habits and goals.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= REMINDERS + REPORTS ================= -->
+<section>
+  <div class="container two">
+    <div class="card panel reveal">
+      <h3>Stay on track</h3>
+      <p class="sub">Reminders that show up while you're working, without the noise.</p>
+      <div class="stagger" id="notifs">
+        <div class="notif"><span class="ico" style="background:var(--orange-soft)">⏰</span><div><b>Task due soon</b><span>"Pay electricity bill" is due today at 5:00 PM.</span><small>just now</small></div></div>
+        <div class="notif"><span class="ico" style="background:var(--red-soft)">⚠️</span><div><b>Task overdue</b><span>"Renew gym membership" was due yesterday.</span><small>1h ago</small></div></div>
+        <div class="notif"><span class="ico" style="background:var(--purple-soft)">🏆</span><div><b>Achievement unlocked</b><span>7-Day Streak · +50 XP</span><small>3h ago</small></div></div>
+        <div class="notif"><span class="ico" style="background:var(--green-soft)">🔁</span><div><b>Habit reminder</b><span>Time for your evening walk. 6-day streak so far.</span><small>5h ago</small></div></div>
+      </div>
+    </div>
+    <div class="card panel reveal">
+      <h3>Your week, summed up</h3>
+      <p class="sub">Weekly and monthly reports with your trends, habits, goals and highlights.</p>
+      <div class="rep-stats stagger">
+        <div><span class="ico" style="background:var(--blue-soft)">✅</span><span><b class="mono" data-num="12">12</b><small>Tasks done</small></span></div>
+        <div><span class="ico" style="background:var(--orange-soft)">🍅</span><span><b class="mono">4h 10m</b><small>Focus time</small></span></div>
+        <div><span class="ico" style="background:var(--green-soft)">🔁</span><span><b class="mono" data-num="11">11</b><small>Habit check-ins</small></span></div>
+        <div><span class="ico" style="background:var(--purple-soft)">🎯</span><span><b class="mono" data-num="2">2</b><small>Milestones reached</small></span></div>
+      </div>
+      <div class="highlights stagger">
+        <small>Highlights</small>
+        <span>⭐ Best day: Thursday, 3h 6m of focus</span>
+        <span>🔥 Longest streak: Read 20 pages, 5 days</span>
+        <span>📈 Focus time up 18% on last week</span>
+      </div>
+      <div class="pdf-btns"><span><span class="fmt mono">PDF</span>Weekly report<i>↓</i></span><span><span class="fmt mono">PDF</span>Monthly report<i>↓</i></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">How it works</span>
+      <h2>Three steps to <span class="accent">better focus.</span></h2>
+      <p>A simple loop that compounds over time.</p>
+    </div>
+    <div class="steps" id="steps">
+      <span class="fill"></span>
+      <div class="step"><div class="num mono">01</div><h3>Organize</h3><p>Sign up, verify your email, and add tasks, habits, goals and study subjects.</p></div>
+      <div class="step"><div class="num mono">02</div><h3>Focus</h3><p>Run Pomodoro sessions on your priorities and get reminded before things are due.</p></div>
+      <div class="step"><div class="num mono">03</div><h3>Improve</h3><p>Review analytics and reports, keep your streak, earn XP and keep improving.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq">
+  <div class="container faq">
+    <div class="faq-side reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2>Questions, <span class="accent">answered.</span></h2>
+      <p>Everything you might want to know before you start. Can't find your answer? Sign up and ask the AI coach.</p>
+      <a class="btn btn-ghost" href="{% url 'accounts:register' %}">Create your account <span class="arrow">→</span></a>
+    </div>
+    <div class="faq-list stagger" id="faqList">
+        <div class="faq-item open">
+          <button class="faq-q" type="button" aria-expanded="true" aria-controls="faq0" id="faqq0"><span>What is FocusForge?</span><i class="plus"></i></button>
+          <div class="faq-a" id="faq0" role="region" aria-labelledby="faqq0"><div><p>FocusForge is one place to plan, focus and improve. It brings together tasks with due times, habits, goals with milestones, a Pomodoro focus timer and study sessions, with an AI coach that knows your work. Everything you finish earns XP, so progress feels rewarding.</p></div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq1" id="faqq1"><span>Can I use it on my phone and laptop?</span><i class="plus"></i></button>
+          <div class="faq-a" id="faq1" role="region" aria-labelledby="faqq1"><div><p>Yes. FocusForge runs in your browser on any phone, tablet or laptop, so there's nothing to install. Your data is saved to your account, so you can start on one device and pick up on another.</p></div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq2" id="faqq2"><span>What can I track with FocusForge?</span><i class="plus"></i></button>
+          <div class="faq-a" id="faq2" role="region" aria-labelledby="faqq2"><div><p>Tasks with priorities, categories, tags and due times. Habits every day or on the weekdays you choose, with streaks and a 30-day completion rate. Goals broken into milestones, focus sessions from 5 to 120 minutes, and study sessions per subject with your files attached.</p></div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq3" id="faqq3"><span>How does the XP and level system work?</span><i class="plus"></i></button>
+          <div class="faq-a" id="faq3" role="region" aria-labelledby="faqq3"><div><p>You earn +10 XP for a task, +5 for a habit check-in, +15 for a focus session, +20 for a milestone and +50 for finishing a goal. Every 100 XP takes you to the next level, and there are 52 achievements to unlock along the way.</p></div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq4" id="faqq4"><span>What does the AI coach actually do?</span><i class="plus"></i></button>
+          <div class="faq-a" id="faq4" role="region" aria-labelledby="faqq4"><div><p>It reads your own tasks, habits and goals, then tells you what to do first, plans your day or evening and reviews how your habits are going. It can answer as a clear table and suggest tasks, habits or goals to add.</p></div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq5" id="faqq5"><span>Can I download reports of my progress?</span><i class="plus"></i></button>
+          <div class="faq-a" id="faq5" role="region" aria-labelledby="faqq5"><div><p>Yes. You can download weekly and monthly PDF reports with your focus time, finished tasks, habit check-ins, goal progress and highlights. They're a quick way to see how your week or month really went.</p></div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq6" id="faqq6"><span>Is my data private?</span><i class="plus"></i></button>
+          <div class="faq-a" id="faq6" role="region" aria-labelledby="faqq6"><div><p>Yes. Your tasks, habits, goals, study files and AI chats are visible only to you. Even the admin panel shows just basic account details and activity counts, never your content. You can export your data or delete your account at any time from Settings.</p></div></div>
+        </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section>
+  <div class="container">
+    <div class="card cta reveal">
+      <span class="eyebrow">Get started</span>
+      <h2 style="margin-top:18px">Ready to forge better <span class="accent">focus?</span></h2>
+      <p>Bring your tasks, habits, goals, focus sessions and progress together, in one place.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary btn-lg" href="{% url 'accounts:register' %}">Create Your Account <span class="arrow">→</span></a>
+        <a class="btn btn-ghost btn-lg" href="{% url 'accounts:login' %}">Log in</a>
+      </div>
+      <div class="cta-pills stagger">
+        <span>✅ Tasks</span><span>🔁 Habits</span><span>🎯 Goals</span><span>🍅 Focus</span><span>📚 Study</span><span>✦ AI Coach</span>
+      </div>
+      <small class="cta-note">Set up in a minute · Works on phone and laptop · Your data stays private</small>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="container foot-top">
+    <div class="foot-brand">
+      <a href="#top" class="brand" style="font-size:15px"><img src="{% static 'images/focusforge-logo.png' %}" alt="" style="width:26px;height:26px"><span>Focus<span class="forge">Forge</span></span></a>
+      <p>Plan, focus and improve in one place.</p>
+    </div>
+    <nav class="foot-col" aria-label="Explore">
+      <b>Explore</b>
+      <div class="foot-links"><a href="#features">Features</a><a href="#how">How it works</a><a href="#analytics">Analytics</a><a href="#ai">AI coach</a><a href="#faq">FAQ</a></div>
+    </nav>
+    <nav class="foot-col" aria-label="Account">
+      <b>Account</b>
+      <a href="{% url 'accounts:login' %}">Log in</a><a href="{% url 'accounts:register' %}">Create account</a>
+    </nav>
+  </div>
+  <div class="container foot-bottom">
+    <span>© <span id="year"></span> FocusForge · Made by <a href="https://github.com/Krishna5421" target="_blank" rel="noopener">Krishna</a></span>
+    <a class="icon-btn" href="https://github.com/Krishna5421/focusforge" target="_blank" rel="noopener" aria-label="FocusForge on GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg></a>
+  </div>
+</footer>
+
+<div class="toasts" id="toasts" aria-live="polite">{% for message in messages %}
+  <div class="toast"><span class="ico" style="background:var(--orange-soft)">{% if message.tags == 'success' %}✅{% else %}👋{% endif %}</span><div><b>{{ message }}</b></div></div>{% endfor %}
+</div>
+<div class="unlock" id="unlock" role="status"><div class="e" id="unlockEmoji">🏆</div><small>Achievement unlocked</small><b id="unlockName"></b><span class="mono" id="unlockXp" style="color:var(--orange);font-size:13px"></span></div>
+
+<script src="{% static 'js/landing.js' %}"></script>
+</body>
+</html>
