@@ -124,3 +124,37 @@ class SidebarBadgeTests(TestCase):
         response = self.client.get(reverse('core:dashboard'))
         self.assertNotContains(response, 'title="Habits left to do today"')
         self.assertNotContains(response, 'title="Active goals"')
+
+
+class LandingPageTests(TestCase):
+    def test_visitors_see_the_landing_page(self):
+        response = self.client.get(reverse('core:dashboard'))
+        self.assertTemplateUsed(response, 'core/landing.html')
+        self.assertTemplateNotUsed(response, 'core/dashboard.html')
+        self.assertContains(response, f'href="{reverse("accounts:register")}"')
+        self.assertContains(response, f'href="{reverse("accounts:login")}"')
+        self.assertContains(response, 'css/landing.css')
+        self.assertContains(response, 'js/landing.js')
+
+    def test_signed_in_users_go_straight_to_their_dashboard(self):
+        User.objects.create_user(username='member', password='password')
+        self.client.login(username='member', password='password')
+        response = self.client.get(reverse('core:dashboard'))
+        self.assertTemplateUsed(response, 'core/dashboard.html')
+        self.assertTemplateNotUsed(response, 'core/landing.html')
+
+    def test_other_pages_still_require_login(self):
+        response = self.client.get(reverse('tasks:task_list'))
+        self.assertRedirects(response, f"{reverse('accounts:login')}?next={reverse('tasks:task_list')}", fetch_redirect_response=False)
+
+    def test_logout_returns_to_the_landing_page_with_a_message(self):
+        User.objects.create_user(username='member', password='password')
+        self.client.login(username='member', password='password')
+        response = self.client.post(reverse('accounts:logout'), follow=True)
+        self.assertRedirects(response, reverse('core:dashboard'))
+        self.assertTemplateUsed(response, 'core/landing.html')
+        self.assertContains(response, 'You have been logged out.')
+
+    def test_login_page_links_back_home(self):
+        response = self.client.get(reverse('accounts:login'))
+        self.assertContains(response, f'class="auth-home" href="{reverse("core:dashboard")}"')

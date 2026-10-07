@@ -569,7 +569,7 @@ class DeleteAccountTests(TestCase):
         with patch('notifications.emailing.send_focusforge_email_async') as farewell:
             response = self.delete()
 
-        self.assertRedirects(response, reverse('accounts:login'), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse('core:dashboard'), fetch_redirect_response=False)
         self.assertFalse(User.objects.filter(username='leaver').exists())
         self.assertFalse(Task.objects.filter(title='Mine').exists())
         self.assertFalse(HabitLog.objects.exists())
