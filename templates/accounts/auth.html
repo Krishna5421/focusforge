@@ -13,6 +13,7 @@
 <body>
 
 <div class="auth-page">
+    <a class="auth-home" href="{% url 'core:dashboard' %}"><i class="bi bi-arrow-left"></i> Back to home</a>
     {% if messages %}
       <div class="toast-container" aria-live="polite">
         {% for message in messages %}<div class="toast {{ message.tags|default:'info' }}" data-toast-type="{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}

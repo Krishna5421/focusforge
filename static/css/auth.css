@@ -675,3 +675,10 @@ body {
 .btn-spinner { animation: btn-spin 0.7s linear infinite; border: 2px solid currentColor; border-radius: 50%; border-right-color: transparent; display: inline-block; flex-shrink: 0; height: 16px; width: 16px; }
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .btn-spinner { animation-duration: 1.6s; } }
+
+/* Link back to the landing page (login / register) */
+.auth-home { position: absolute; top: 20px; left: 20px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-decoration: none; transition: color 0.2s, background-color 0.2s; }
+.auth-home:hover { color: #f5a524; background: rgba(245, 165, 36, 0.08); }
+@media (max-width: 768px) {
+    .auth-home { position: static; align-self: flex-start; margin: -16px 0 12px; }
+}

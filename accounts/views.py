@@ -203,7 +203,7 @@ def verify_email_restart(request):
 def logout_view(request):
     logout(request)
     messages.info(request, 'You have been logged out.')
-    return redirect('accounts:login')
+    return redirect('core:dashboard')
 
 
 def password_reset_request(request):
@@ -407,7 +407,7 @@ def delete_account(request):
         return show_error('We could not delete your account right now. Nothing was removed. Please try again.')
     logout(request)
     messages.success(request, 'Your account has been deleted.')
-    return redirect('accounts:login')
+    return redirect('core:dashboard')
 
 
 @login_required
