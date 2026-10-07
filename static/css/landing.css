@@ -434,7 +434,8 @@ footer a:hover { color: var(--orange); }
 .foot-bottom { display: flex; justify-content: space-between; align-items: center; gap: 14px; position: relative; margin-top: 28px; padding-top: 18px; font-size: 13px; color: var(--text-dim); }
 .foot-bottom::before { content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 1px; background: var(--border); }
 .foot-bottom a:not(.icon-btn) { color: var(--text-2); }
-.foot-bottom .icon-btn:hover { color: var(--text); border-color: var(--border-hover); }
+.to-top { transition: color .2s, border-color .2s, background-color .2s, transform .25s var(--ease); }
+.foot-bottom .to-top:hover { color: var(--orange); border-color: color-mix(in srgb, var(--orange) 40%, var(--border)); background: var(--orange-soft); transform: translateY(-3px); }
 
 /* Toasts + achievement unlock */
 .toasts { position: fixed; right: 20px; bottom: 20px; z-index: 200; display: grid; gap: 10px; pointer-events: none; }
