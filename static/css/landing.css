@@ -375,7 +375,7 @@ h1, h2, .eyebrow, .section-head p, .hero-sub { text-wrap: balance; }
 .faq { display: grid; grid-template-columns: 1fr 1.6fr; gap: 56px; align-items: start; }
 .faq-side { position: sticky; top: 110px; }
 .faq-side h2 { margin: 16px 0 14px; }
-.faq-side p { color: var(--text-muted); font-size: 16px; margin-bottom: 26px; }
+.faq-side p { color: var(--text-muted); font-size: 16px; }
 .faq-list { display: grid; gap: 10px; }
 .faq-item { border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); transition: border-color .3s, background-color .3s; }
 .faq-item.open { border-color: color-mix(in srgb, var(--orange) 40%, var(--border)); }
